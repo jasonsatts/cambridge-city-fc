@@ -1086,7 +1086,7 @@ export default function App() {
   }
 
   // ========== MATCH SCREEN (COACH ONLY) ==========
-  if (screen === 'match' && matchStarted && mode === 'coach') {
+  if (screen === 'match' && matchStarted && (mode === 'coach' || mode === 'parent')) {
     const displayTime = half === 1 ? matchTime : matchTime - (45 * 60);
     
     return (
@@ -1104,7 +1104,7 @@ export default function App() {
             <div className="half">Half {half}</div>
           </div>
           <div className="match-controls-header">
-            {!matchEnded ? (
+            {mode === 'coach' && !matchEnded ? (
               <>
                 <button 
                   className={`btn-timer ${timerRunning ? 'active' : ''}`}
@@ -1123,8 +1123,10 @@ export default function App() {
                   </button>
                 )}
               </>
-            ) : (
+            ) : matchEnded ? (
               <div className="full-time-label">🏁</div>
+            ) : (
+              <div style={{color: 'var(--text-secondary)', fontSize: '0.9rem'}}>Live Match</div>
             )}
           </div>
         </div>
