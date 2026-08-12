@@ -1157,8 +1157,10 @@ export default function App() {
           <button 
             className="btn-primary"
             onClick={() => {
+              setMatchStarted(true);
               setScreen('match');
               setTimerRunning(true);
+              setPlayers(buildPitchPlayers());
             }}
             disabled={!statsPerson && statsPerson !== 0}
           >
