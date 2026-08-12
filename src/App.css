@@ -270,6 +270,44 @@ html, body, #root {
   margin-bottom: 8px;
 }
 
+
+/* Feminine ponytail styling for placeholders */
+.xi-photo-placeholder {
+  position: relative;
+  background: linear-gradient(135deg, rgba(255, 107, 157, 0.15), rgba(0, 217, 255, 0.1));
+  border: 2px solid rgba(255, 107, 157, 0.4);
+}
+
+.xi-photo-placeholder::after {
+  content: '';
+  position: absolute;
+  top: -8px;
+  right: 8px;
+  width: 20px;
+  height: 24px;
+  background: rgba(255, 107, 157, 0.5);
+  border-radius: 50% 50% 40% 40%;
+  box-shadow: 0 -8px 12px rgba(255, 107, 157, 0.3);
+}
+
+.sub-photo-placeholder {
+  position: relative;
+  background: linear-gradient(135deg, rgba(255, 107, 157, 0.15), rgba(0, 217, 255, 0.1));
+  border: 2px solid rgba(255, 107, 157, 0.4);
+}
+
+.sub-photo-placeholder::after {
+  content: '';
+  position: absolute;
+  top: -6px;
+  right: 5px;
+  width: 14px;
+  height: 16px;
+  background: rgba(255, 107, 157, 0.5);
+  border-radius: 50% 50% 40% 40%;
+  box-shadow: 0 -6px 8px rgba(255, 107, 157, 0.3);
+}
+
 .code-hint {
   font-size: 0.8rem;
   color: var(--text-tertiary);
