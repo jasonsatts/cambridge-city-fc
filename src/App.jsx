@@ -573,7 +573,7 @@ export default function App() {
                         if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex';
                       }}
                     />
-                    <div className="xi-photo-placeholder" style={{display: 'none'}}>👩</div>
+                    <div className="xi-photo-placeholder">👤</div>
                   </div>
                   <div className="xi-num">#{player?.squadNum}</div>
                   <div className="xi-name">{player?.firstName} {player?.surname}</div>
@@ -597,7 +597,7 @@ export default function App() {
                         if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex';
                       }}
                     />
-                    <div className="sub-photo-placeholder" style={{display: 'none'}}>👩</div>
+                    <div className="sub-photo-placeholder">👤</div>
                   </div>
                   <div className="sub-num">#{player?.squadNum}</div>
                   <div className="sub-name">{player?.firstName} {player?.surname}</div>
@@ -898,7 +898,7 @@ export default function App() {
                         if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex';
                       }}
                     />
-                    <div className="xi-photo-placeholder" style={{display: 'none'}}>👩</div>
+                    <div className="xi-photo-placeholder">👤</div>
                   </div>
                   <div className="xi-num">#{player.squadNum}</div>
                   <div className="xi-name">{player.firstName} {player.surname}</div>
@@ -922,7 +922,7 @@ export default function App() {
                         if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex';
                       }}
                     />
-                    <div className="sub-photo-placeholder" style={{display: 'none'}}>👩</div>
+                    <div className="sub-photo-placeholder">👤</div>
                   </div>
                   <div className="sub-num">#{player.squadNum}</div>
                   <div className="sub-name">{player.firstName} {player.surname}</div>
