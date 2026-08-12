@@ -274,38 +274,66 @@ html, body, #root {
 /* Feminine ponytail styling for placeholders */
 .xi-photo-placeholder {
   position: relative;
-  background: linear-gradient(135deg, rgba(255, 107, 157, 0.15), rgba(0, 217, 255, 0.1));
-  border: 2px solid rgba(255, 107, 157, 0.4);
+  font-size: 3.5rem;
+  width: 80px;
+  height: 80px;
+  background: rgba(0, 217, 255, 0.1);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(0, 217, 255, 0.3);
+}
+
+.xi-photo-placeholder::before {
+  content: '👤';
+  position: absolute;
+  z-index: 1;
 }
 
 .xi-photo-placeholder::after {
   content: '';
   position: absolute;
-  top: -8px;
-  right: 8px;
-  width: 20px;
-  height: 24px;
-  background: rgba(255, 107, 157, 0.5);
+  top: -12px;
+  right: 12px;
+  width: 24px;
+  height: 32px;
+  background: linear-gradient(180deg, rgba(0, 217, 255, 0.7), rgba(0, 217, 255, 0.4));
   border-radius: 50% 50% 40% 40%;
-  box-shadow: 0 -8px 12px rgba(255, 107, 157, 0.3);
+  box-shadow: 0 -2px 8px rgba(0, 217, 255, 0.5), inset -2px 0 4px rgba(0, 217, 255, 0.3);
+  z-index: 2;
 }
 
 .sub-photo-placeholder {
   position: relative;
-  background: linear-gradient(135deg, rgba(255, 107, 157, 0.15), rgba(0, 217, 255, 0.1));
-  border: 2px solid rgba(255, 107, 157, 0.4);
+  font-size: 2rem;
+  width: 60px;
+  height: 60px;
+  background: rgba(0, 217, 255, 0.1);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(0, 217, 255, 0.3);
+}
+
+.sub-photo-placeholder::before {
+  content: '👤';
+  position: absolute;
+  z-index: 1;
 }
 
 .sub-photo-placeholder::after {
   content: '';
   position: absolute;
-  top: -6px;
-  right: 5px;
-  width: 14px;
-  height: 16px;
-  background: rgba(255, 107, 157, 0.5);
+  top: -9px;
+  right: 9px;
+  width: 18px;
+  height: 24px;
+  background: linear-gradient(180deg, rgba(0, 217, 255, 0.7), rgba(0, 217, 255, 0.4));
   border-radius: 50% 50% 40% 40%;
-  box-shadow: 0 -6px 8px rgba(255, 107, 157, 0.3);
+  box-shadow: 0 -2px 6px rgba(0, 217, 255, 0.5), inset -2px 0 3px rgba(0, 217, 255, 0.3);
+  z-index: 2;
 }
 
 .code-hint {
