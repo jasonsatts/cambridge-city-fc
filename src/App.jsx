@@ -532,10 +532,11 @@ export default function App() {
               // Coach has started the match!
               // Build pitch players with positioning from XI data
               if (data.selectedXI && data.selectedXI.length > 0) {
-                // Parse formation from API
+                // Parse formation from API — reuse the same FORMATIONS lookup
+                // the coach uses, instead of a regex that was mis-parsing the
+                // leading "1" as the defender count and dropping fwd entirely.
                 const formStr = data.formation || '1-4-4-2';
-                const [_, def, mid, fwd] = formStr.match(/(\d)-(\d)-(\d)-(\d)/) || [null, 1, 4, 4, 2];
-                const formConfig = { def: parseInt(def), mid: parseInt(mid), fwd: parseInt(fwd) };
+                const formConfig = FORMATIONS[formStr] || FORMATIONS['1-4-4-2'];
                 const pitchPlayers = [];
                 let playerIndex = 0;
                 
@@ -583,17 +584,17 @@ export default function App() {
                   }
                 }
                 
-                // FW (top, attacking y: 30)
-                const fwY = 30;
+                // FWD (top, attacking y: 30)
+                const fwdY = 30;
                 for (let i = 0; i < formConfig.fwd; i++) {
                   const player = data.selectedXI[playerIndex];
                   if (player) {
-                    const fwSpacing = formConfig.fwd > 1 ? 50 / (formConfig.fwd - 1) : 0;
+                    const fwdSpacing = formConfig.fwd > 1 ? 50 / (formConfig.fwd - 1) : 0;
                     pitchPlayers.push({
                       ...player,
-                      position: 'FW',
-                      x: 15 + i * fwSpacing,
-                      y: fwY,
+                      position: 'FWD',
+                      x: 15 + i * fwdSpacing,
+                      y: fwdY,
                     });
                     playerIndex++;
                   }
@@ -1120,6 +1121,7 @@ export default function App() {
 
   // ========== SELECT STATS PERSON (BEFORE MATCH) ==========
   if (screen === 'select-stats-person' && mode === 'coach' && matchStarted && !timerRunning) {
+    const selectedSubs = subs.map(id => allPlayers.find(p => p.id === id)).filter(Boolean);
     return (
       <div className="container">
         <div className="stats-person-screen">
