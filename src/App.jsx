@@ -15,20 +15,19 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Lineup selection
   const [startingXI, setStartingXI] = useState([]);
   const [subs, setSubs] = useState([]);
 
-  // Match state
   const [formation, setFormation] = useState('1-4-4-2');
   const [matchStarted, setMatchStarted] = useState(false);
-  const [players, setPlayers] = useState([]); // Players on pitch with positions
+  const [players, setPlayers] = useState([]);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [showActionModal, setShowActionModal] = useState(false);
   const [showEventsLog, setShowEventsLog] = useState(false);
   const [events, setEvents] = useState([]);
   const [stats, setStats] = useState({});
   const [draggedPlayer, setDraggedPlayer] = useState(null);
+  const [tapStartPos, setTapStartPos] = useState(null);
 
   useEffect(() => {
     fetchPlayers();
@@ -78,7 +77,6 @@ export default function App() {
 
   const handleFormationSelect = () => {
     if (formation) {
-      // Initialize players with evenly distributed positions
       const formConfig = FORMATIONS[formation];
       const pitchPlayers = [];
       
@@ -90,23 +88,23 @@ export default function App() {
         ...gkPlayer,
         position: 'GK',
         x: 50,
-        y: 88,
+        y: 92,
       });
       playerIndex++;
       
-      // DEF
+      // DEF (towards top)
       for (let i = 0; i < formConfig.def; i++) {
         const player = allPlayers.find(p => p.id === startingXI[playerIndex]);
         pitchPlayers.push({
           ...player,
           position: 'DEF',
           x: 15 + (i * (70 / (formConfig.def - 1 || 1))),
-          y: 70,
+          y: 75,
         });
         playerIndex++;
       }
       
-      // MID
+      // MID (middle)
       for (let i = 0; i < formConfig.mid; i++) {
         const player = allPlayers.find(p => p.id === startingXI[playerIndex]);
         pitchPlayers.push({
@@ -118,14 +116,14 @@ export default function App() {
         playerIndex++;
       }
       
-      // FWD
+      // FWD (towards bottom)
       for (let i = 0; i < formConfig.fwd; i++) {
         const player = allPlayers.find(p => p.id === startingXI[playerIndex]);
         pitchPlayers.push({
           ...player,
           position: 'FWD',
           x: 15 + (i * (70 / (formConfig.fwd - 1 || 1))),
-          y: 30,
+          y: 25,
         });
         playerIndex++;
       }
@@ -136,30 +134,51 @@ export default function App() {
     }
   };
 
-  const handlePlayerTap = (player) => {
-    setSelectedPlayer(player);
-    setShowActionModal(true);
-  };
-
-  const handleMouseDown = (e, player) => {
-    setDraggedPlayer({ ...player, startX: e.clientX || e.touches?.[0]?.clientX });
+  const handlePlayerMouseDown = (e, player) => {
+    const clientX = e.clientX || e.touches?.[0]?.clientX;
+    const clientY = e.clientY || e.touches?.[0]?.clientY;
+    setTapStartPos({ x: clientX, y: clientY });
+    setDraggedPlayer({ ...player, startX: clientX, startY: clientY });
   };
 
   const handleMouseMove = (e) => {
     if (!draggedPlayer) return;
     
     const svg = document.querySelector('.pitch');
+    if (!svg) return;
+    
     const rect = svg.getBoundingClientRect();
-    const x = ((e.clientX || e.touches?.[0]?.clientX) - rect.left) / rect.width * 100;
-    const y = ((e.clientY || e.touches?.[0]?.clientY) - rect.top) / rect.height * 100;
+    const clientX = e.clientX || e.touches?.[0]?.clientX;
+    const clientY = e.clientY || e.touches?.[0]?.clientY;
+    
+    const x = ((clientX - rect.left) / rect.width) * 100;
+    const y = ((clientY - rect.top) / rect.height) * 100;
     
     setPlayers(players.map(p =>
       p.id === draggedPlayer.id ? { ...p, x: Math.max(10, Math.min(90, x)), y: Math.max(10, Math.min(90, y)) } : p
     ));
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e) => {
+    if (!draggedPlayer || !tapStartPos) return;
+    
+    const clientX = e.clientX || e.changedTouches?.[0]?.clientX;
+    const clientY = e.clientY || e.changedTouches?.[0]?.clientY;
+    
+    // If distance < 10px, treat as tap
+    const distance = Math.sqrt(
+      Math.pow(clientX - tapStartPos.x, 2) + 
+      Math.pow(clientY - tapStartPos.y, 2)
+    );
+    
+    if (distance < 10) {
+      // It's a tap - select the player
+      setSelectedPlayer(draggedPlayer);
+      setShowActionModal(true);
+    }
+    
     setDraggedPlayer(null);
+    setTapStartPos(null);
   };
 
   const recordEvent = (eventType) => {
@@ -345,46 +364,65 @@ export default function App() {
       >
         {/* Pitch */}
         <div className="pitch-wrapper">
-          <svg viewBox="0 0 100 100" className="pitch" style={{ cursor: draggedPlayer ? 'grabbing' : 'grab' }}>
+          <svg viewBox="0 0 80 130" className="pitch" style={{ cursor: draggedPlayer ? 'grabbing' : 'grab' }}>
             {/* Pitch background */}
-            <rect width="100" height="100" fill="#2d5016" />
+            <rect width="80" height="130" fill="#2d5016" />
+            
+            {/* Top goal line */}
+            <line x1="0" y1="0" x2="80" y2="0" stroke="white" strokeWidth="0.5" />
+            {/* Bottom goal line */}
+            <line x1="0" y1="130" x2="80" y2="130" stroke="white" strokeWidth="0.5" />
+            {/* Left sideline */}
+            <line x1="0" y1="0" x2="0" y2="130" stroke="white" strokeWidth="0.5" />
+            {/* Right sideline */}
+            <line x1="80" y1="0" x2="80" y2="130" stroke="white" strokeWidth="0.5" />
+            
             {/* Halfway line */}
-            <line x1="50" y1="0" x2="50" y2="100" stroke="white" strokeWidth="0.3" />
+            <line x1="0" y1="65" x2="80" y2="65" stroke="white" strokeWidth="0.4" />
             {/* Centre circle */}
-            <circle cx="50" cy="50" r="8" stroke="white" strokeWidth="0.2" fill="none" />
+            <circle cx="40" cy="65" r="10" stroke="white" strokeWidth="0.3" fill="none" />
             {/* Centre spot */}
-            <circle cx="50" cy="50" r="0.5" fill="white" />
-            {/* Penalty boxes */}
-            <rect x="5" y="35" width="15" height="30" stroke="white" strokeWidth="0.2" fill="none" />
-            <rect x="80" y="35" width="15" height="30" stroke="white" strokeWidth="0.2" fill="none" />
-            {/* Goal areas */}
-            <rect x="0" y="40" width="5" height="20" stroke="white" strokeWidth="0.15" fill="none" />
-            <rect x="95" y="40" width="5" height="20" stroke="white" strokeWidth="0.15" fill="none" />
+            <circle cx="40" cy="65" r="0.8" fill="white" />
+            
+            {/* Top penalty box */}
+            <rect x="15" y="0" width="50" height="18" stroke="white" strokeWidth="0.3" fill="none" />
+            {/* Bottom penalty box */}
+            <rect x="15" y="112" width="50" height="18" stroke="white" strokeWidth="0.3" fill="none" />
+            
+            {/* Top goal area */}
+            <rect x="25" y="0" width="30" height="8" stroke="white" strokeWidth="0.25" fill="none" />
+            {/* Bottom goal area */}
+            <rect x="25" y="122" width="30" height="8" stroke="white" strokeWidth="0.25" fill="none" />
+            
+            {/* Top centre mark */}
+            <circle cx="40" cy="3" r="0.5" fill="white" />
+            {/* Bottom centre mark */}
+            <circle cx="40" cy="127" r="0.5" fill="white" />
 
-            {/* Player markers - DRAGGABLE */}
+            {/* Player markers - DRAGGABLE & TAPPABLE */}
             {players.map((player) => (
               <g 
                 key={player.id}
-                onMouseDown={(e) => handleMouseDown(e, player)}
-                onTouchStart={(e) => handleMouseDown(e, player)}
+                onMouseDown={(e) => handlePlayerMouseDown(e, player)}
+                onTouchStart={(e) => handlePlayerMouseDown(e, player)}
                 style={{ cursor: 'grab' }}
               >
                 <circle
                   cx={player.x}
                   cy={player.y}
-                  r="4.5"
+                  r="5"
                   fill="#FF6B6B"
                   stroke="white"
-                  strokeWidth="0.5"
-                  style={{ cursor: 'grab' }}
+                  strokeWidth="0.8"
+                  style={{ cursor: 'grab', userSelect: 'none' }}
                 />
                 <text
                   x={player.x}
-                  y={player.y - 1.5}
+                  y={player.y - 2}
                   textAnchor="middle"
                   dominantBaseline="middle"
                   fill="white"
-                  fontSize="2.2"
+                  fontSize="2.5"
                   fontWeight="bold"
                   style={{ pointerEvents: 'none', userSelect: 'none' }}
                 >
@@ -392,11 +430,11 @@ export default function App() {
                 </text>
                 <text
                   x={player.x}
-                  y={player.y + 2}
+                  y={player.y + 2.5}
                   textAnchor="middle"
                   dominantBaseline="middle"
                   fill="white"
-                  fontSize="1.4"
+                  fontSize="1.6"
                   style={{ pointerEvents: 'none', userSelect: 'none' }}
                 >
                   {player.firstName}
