@@ -43,11 +43,14 @@ body {
   overflow-x: hidden;
 }
 
-html, body, #root {
+html, body {
   min-height: 100vh;
   width: 100vw;
 }
 
+#root {
+  width: 100%;
+}
 /* ===== HOME SCREEN ===== */
 .home-container {
   display: flex;
