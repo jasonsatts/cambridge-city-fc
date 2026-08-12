@@ -520,7 +520,7 @@ export default function App() {
 
 
   // ========== PARENT POLLING FOR MATCH START ==========
-  // Force rebuild v2
+  // Force rebuild v3 - clear vercel cache
   useEffect(() => {
     if (mode === 'parent' && screen === 'parent-watch' && matchCode) {
       const checkMatchStart = async () => {
