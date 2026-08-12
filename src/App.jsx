@@ -614,7 +614,7 @@ export default function App() {
       const interval = setInterval(checkMatchStart, 1000);
       return () => clearInterval(interval);
     }
-  }, [screen, mode, matchCode]);
+  }, [mode, matchCode]);
 
   // ========== CHECK FOR SHARED TEAM SHEET URL ==========
   const params = new URLSearchParams(window.location.search);
