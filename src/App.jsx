@@ -78,6 +78,26 @@ export default function App() {
     fetchPlayers();
   }, []);
 
+  // Check for teamSheet URL parameter (shared link)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sharedTeamSheetId = params.get('teamSheet');
+    if (sharedTeamSheetId) {
+      setTeamSheetId(sharedTeamSheetId);
+      setMode('parent');
+      // If match hasn't started yet, show team sheet preview
+      if (!matchStarted) {
+        setScreen('team-sheet-preview');
+      } else if (matchEnded) {
+        // If match is finished, go to parent watch (MOTM voting)
+        setScreen('parent-watch');
+      } else {
+        // If match is in progress, go to parent watch
+        setScreen('parent-watch');
+      }
+    }
+  }, []);
+
   const fetchPlayers = async () => {
     try {
       setLoading(true);

@@ -1102,7 +1102,7 @@ html, body, #root {
 
 .players-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
   gap: 10px;
 }
 
@@ -1129,11 +1129,12 @@ html, body, #root {
 }
 
 .badge-name {
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   color: var(--text-primary);
   font-weight: 700;
   margin-bottom: 4px;
   word-break: break-word;
+  line-height: 1.2;
 }
 
 .badge-time {
@@ -1789,7 +1790,7 @@ html, body, #root {
 
 .subs-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 12px;
 }
 
