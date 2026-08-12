@@ -264,9 +264,10 @@ export default function App() {
     setCurrentlyOnPitch(onPitch);
     setPlayerTimes(times);
     setMatchStarted(true);
-    // Sync match state to localStorage for parents to poll
-    localStorage.setItem('ccfc-match-code', matchCode);
-    localStorage.setItem('ccfc-match-started', 'true');
+    
+    // Signal to parents that match has started
+    fetch(`/api/match-status?matchCode=${matchCode}&action=start`, { method: 'POST' }).catch(e => console.log('Could not signal match start'));
+    
     setScreen('select-stats-person');
   };
 
@@ -505,33 +506,30 @@ export default function App() {
   };
 
 
-  // ========== PARENT POLLING FOR MATCH START & LIVE UPDATES ==========
+  // ========== PARENT POLLING FOR MATCH START ==========
   useEffect(() => {
-    if (mode === 'parent') {
-      const checkMatchStatus = () => {
-        // Check localStorage for match state
-        const storedMatchStarted = localStorage.getItem('ccfc-match-started');
-        const storedEvents = localStorage.getItem('ccfc-events');
-        
-        if (storedMatchStarted === 'true') {
-          if (screen === 'parent-watch') {
-            const eventsData = storedEvents ? JSON.parse(storedEvents) : [];
-            setEvents(eventsData);
-            setMatchStarted(true);
-            setScreen('match');
-          } else if (screen === 'match') {
-            // Parent already watching - update events in real-time
-            const eventsData = storedEvents ? JSON.parse(storedEvents) : [];
-            setEvents(eventsData);
+    if (mode === 'parent' && screen === 'parent-watch' && matchCode) {
+      const checkMatchStart = async () => {
+        try {
+          const response = await fetch(`/api/match-status?matchCode=${matchCode}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.isActive) {
+              // Coach has started the match!
+              setMatchStarted(true);
+              setScreen('match');
+            }
           }
+        } catch (e) {
+          console.log('Checking for coach start...');
         }
       };
       
-      // Poll every 1 second for live updates
-      const interval = setInterval(checkMatchStatus, 1000);
+      // Poll every 1 second
+      const interval = setInterval(checkMatchStart, 1000);
       return () => clearInterval(interval);
     }
-  }, [screen, mode]);
+  }, [screen, mode, matchCode]);
 
   // ========== CHECK FOR SHARED TEAM SHEET URL ==========
   const params = new URLSearchParams(window.location.search);
