@@ -5,6 +5,7 @@ import './App.css';
 const SHEET_ID = '1HNU4KIb_84KTASKqwV32Jeo3Wcr4jJyV2px5hM9eC9s';
 const PLAYERS_GID = '1456060265'; // Correct sheet ID for "Players" tab
 const PLAYERS_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${PLAYERS_GID}`;
+const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
 
 // Formation templates
 const FORMATIONS = {
@@ -44,10 +45,11 @@ export default function App() {
       setLoading(true);
       setError('');
       
-      console.log('Fetching from:', PLAYERS_CSV_URL);
+      const proxyUrl = CORS_PROXY + encodeURIComponent(PLAYERS_CSV_URL);
+      console.log('Fetching from:', proxyUrl);
       
-      // Fetch CSV from public Google Sheet
-      const response = await fetch(PLAYERS_CSV_URL);
+      // Fetch CSV from CORS proxy
+      const response = await fetch(proxyUrl);
       
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -86,6 +88,13 @@ export default function App() {
       }).filter(p => p.firstName || p.surname); // Filter out empty rows
 
       console.log('Parsed players:', players);
+      
+      if (players.length === 0) {
+        setError('No players found in sheet');
+        setLoading(false);
+        return;
+      }
+
       setAllPlayers(players);
 
       // Initialize stats
