@@ -200,8 +200,6 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  max-height: 90vh;
-  overflow-y: auto;
 }
 
 .setup-screen h1,
@@ -646,7 +644,6 @@ html, body, #root {
   border-top: 2px solid var(--primary);
   border-radius: 20px 20px 0 0;
   max-height: 60vh;
-  overflow-y: auto;
   z-index: 80;
   animation: slideUp 0.3s ease-out;
   box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.3);
@@ -746,8 +743,6 @@ html, body, #root {
 .modal-overlay .announcement-modal {
   margin: auto;
   margin-bottom: 0;
-  max-height: 90vh;
-  overflow-y: auto;
 }
 
 .modal-content h2 {
@@ -879,8 +874,6 @@ html, body, #root {
   max-width: 600px;
   width: 100%;
   animation: slideUp 0.5s ease-out;
-  max-height: 90vh;
-  overflow-y: auto;
 }
 
 .summary-screen h1 {
@@ -962,8 +955,6 @@ html, body, #root {
   max-width: 600px;
   width: 100%;
   animation: slideUp 0.5s ease-out;
-  max-height: 90vh;
-  overflow-y: auto;
 }
 
 .parent-watch-screen h1 {
@@ -1715,7 +1706,6 @@ html, body, #root {
 .team-sheet-screen {
   background: var(--bg-primary);
   border-radius: 12px;
-  overflow-y: auto;
   max-height: 95vh;
   padding: 20px;
 }
