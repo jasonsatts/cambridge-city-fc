@@ -1,12 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 
-// Google Sheet ID and configuration
-const SHEET_ID = '1HNU4KIb_84KTASKqwV32Jeo3Wcr4jJyV2px5hM9eC9s';
-const PLAYERS_GID = '1456060265'; // Correct sheet ID for "Players" tab
-const PLAYERS_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${PLAYERS_GID}`;
-const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
-
 // Formation templates
 const FORMATIONS = {
   '1-4-4-2': { def: 4, mid: 4, fwd: 2 },
@@ -35,7 +29,7 @@ export default function App() {
   const [events, setEvents] = useState([]);
   const [stats, setStats] = useState({});
 
-  // Fetch players from Google Sheet CSV
+  // Fetch players from API
   useEffect(() => {
     fetchPlayers();
   }, []);
@@ -45,61 +39,30 @@ export default function App() {
       setLoading(true);
       setError('');
       
-      const proxyUrl = CORS_PROXY + encodeURIComponent(PLAYERS_CSV_URL);
-      console.log('Fetching from:', proxyUrl);
+      console.log('Fetching players from API...');
       
-      // Fetch CSV from CORS proxy
-      const response = await fetch(proxyUrl);
+      // Fetch from our Vercel API (server-side fetch, no CORS issues)
+      const response = await fetch('/api/players');
       
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}`);
       }
       
-      const csvText = await response.text();
-      console.log('CSV response length:', csvText.length);
+      const data = await response.json();
+      console.log('Loaded players:', data.players);
       
-      // Parse CSV
-      const rows = csvText.trim().split('\n').filter(row => row.trim());
-      console.log('Total rows:', rows.length);
-      
-      if (rows.length < 2) {
-        setError('Sheet is empty or invalid');
+      if (!data.players || data.players.length === 0) {
+        setError('No players found');
         setLoading(false);
         return;
       }
 
-      // Log header row
-      console.log('Header row:', rows[0]);
-
-      // Skip header row, parse player data
-      const players = rows.slice(1).map((row, idx) => {
-        // Parse CSV row (handle commas in names)
-        const cols = row.split(',').map(col => col.trim().replace(/^"|"$/g, ''));
-        
-        return {
-          id: idx + 1,
-          playerId: cols[0] || idx + 1,
-          squadNum: cols[1] || idx + 1,
-          firstName: cols[2] || '',
-          surname: cols[3] || '',
-          position: cols[4] || '',
-          fullName: `${cols[2] || ''} ${cols[3] || ''}`.trim(),
-        };
-      }).filter(p => p.firstName || p.surname); // Filter out empty rows
-
-      console.log('Parsed players:', players);
-      
-      if (players.length === 0) {
-        setError('No players found in sheet');
-        setLoading(false);
-        return;
-      }
-
-      setAllPlayers(players);
+      setAllPlayers(data.players);
 
       // Initialize stats
       const initialStats = {};
-      players.forEach(p => {
+      data.players.forEach(p => {
         initialStats[p.id] = { 
           goals: 0, 
           assists: 0, 
@@ -332,7 +295,7 @@ export default function App() {
       DEF: { y: '75%' },
       MID: { y: '50%' },
       FWD: { y: '25%' },
-      '': { y: '50%' }, // Default if no position
+      '': { y: '50%' },
     };
 
     return (
