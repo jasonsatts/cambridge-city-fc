@@ -539,8 +539,6 @@ export default function App() {
     );
   }
 
-  return null;
-}
   // ========== COACH SETUP ==========
   if (screen === 'coach-setup' && mode === 'coach') {
     return (
