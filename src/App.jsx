@@ -520,6 +520,7 @@ export default function App() {
 
 
   // ========== PARENT POLLING FOR MATCH START ==========
+  // Force rebuild v2
   useEffect(() => {
     if (mode === 'parent' && screen === 'parent-watch' && matchCode) {
       const checkMatchStart = async () => {
