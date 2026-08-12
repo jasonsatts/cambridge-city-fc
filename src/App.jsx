@@ -3,7 +3,7 @@ import './App.css';
 
 // Google Sheet ID and configuration
 const SHEET_ID = '1HNU4KIb_84KTASKqwV32Jeo3Wcr4jJyV2px5hM9eC9s';
-const PLAYERS_RANGE = 'Players!A2:D'; // Fetch First Name, Surname, Squad #, Position
+const PLAYERS_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`;
 
 // Formation templates
 const FORMATIONS = {
@@ -33,7 +33,7 @@ export default function App() {
   const [events, setEvents] = useState([]);
   const [stats, setStats] = useState({});
 
-  // Fetch players from Google Sheet
+  // Fetch players from Google Sheet CSV
   useEffect(() => {
     fetchPlayers();
   }, []);
@@ -41,31 +41,54 @@ export default function App() {
   const fetchPlayers = async () => {
     try {
       setLoading(true);
-      const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${PLAYERS_RANGE}?key=AIzaSyDyWYaVb-6b6W3U9j36AhRMXV1W4bKegxQ`;
-      const response = await fetch(url);
-      const data = await response.json();
-
-      if (data.values) {
-        const players = data.values.map((row, idx) => ({
-          id: idx + 1,
-          firstName: row[0] || '',
-          surname: row[1] || '',
-          squadNum: row[2] || idx + 1,
-          position: row[3] || '',
-          fullName: `${row[0] || ''} ${row[1] || ''}`.trim(),
-        }));
-        setAllPlayers(players);
-        // Initialize stats
-        const initialStats = {};
-        players.forEach(p => {
-          initialStats[p.id] = { goals: 0, assists: 0, yellow: 0, red: 0, motm: 0, onPitch: false, subOnTime: null };
-        });
-        setStats(initialStats);
-      }
       setError('');
+      
+      // Fetch CSV from public Google Sheet
+      const response = await fetch(PLAYERS_CSV_URL);
+      const csvText = await response.text();
+      
+      // Parse CSV
+      const rows = csvText.trim().split('\n');
+      if (rows.length < 2) {
+        setError('Sheet is empty or invalid');
+        setLoading(false);
+        return;
+      }
+
+      // Skip header row, parse player data
+      const players = rows.slice(1).map((row, idx) => {
+        const cols = row.split(',').map(col => col.trim().replace(/^"|"$/g, ''));
+        return {
+          id: idx + 1,
+          playerId: cols[0] || idx + 1,
+          squadNum: cols[1] || idx + 1,
+          firstName: cols[2] || '',
+          surname: cols[3] || '',
+          position: cols[4] || '',
+          fullName: `${cols[2] || ''} ${cols[3] || ''}`.trim(),
+        };
+      }).filter(p => p.firstName || p.surname); // Filter out empty rows
+
+      console.log('Loaded players:', players);
+      setAllPlayers(players);
+
+      // Initialize stats
+      const initialStats = {};
+      players.forEach(p => {
+        initialStats[p.id] = { 
+          goals: 0, 
+          assists: 0, 
+          yellow: 0, 
+          red: 0, 
+          motm: 0, 
+          onPitch: false, 
+          subOnTime: null 
+        };
+      });
+      setStats(initialStats);
     } catch (err) {
       console.error('Error fetching players:', err);
-      setError('Failed to load players from Google Sheet');
+      setError(`Failed to load players: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -151,14 +174,24 @@ export default function App() {
 
   // ========== SCREENS ==========
 
-  if (loading) return <div className="container"><h1>Loading players...</h1></div>;
+  if (loading) {
+    return (
+      <div className="container">
+        <div className="loading-screen">
+          <h1>⚽ Loading squad data...</h1>
+          <p>Fetching players from your Google Sheet</p>
+        </div>
+      </div>
+    );
+  }
 
   // SCREEN 1: Select Starting XI & Subs
   if (screen === 'setup') {
     const availablePlayers = allPlayers.filter(
       p => !startingXI.includes(p.id) && !subs.includes(p.id)
     );
-    const subPlayers = allPlayers.filter(p => subs.includes(p.id));
+    const selectedStartingXI = startingXI.map(id => allPlayers.find(p => p.id === id));
+    const selectedSubs = subs.map(id => allPlayers.find(p => p.id === id));
 
     return (
       <div className="container">
@@ -172,62 +205,60 @@ export default function App() {
             <div className="selection-section">
               <h2>Starting XI (11 Players)</h2>
               <div className="player-list">
-                {startingXI.map((playerID, idx) => {
-                  const player = allPlayers.find(p => p.id === playerID);
-                  return (
-                    <div key={idx} className="selected-player">
-                      <span>#{idx + 1}</span>
-                      <span>{player.fullName}</span>
-                      <button onClick={() => setStartingXI(startingXI.filter((_, i) => i !== idx))}>✕</button>
-                    </div>
-                  );
-                })}
+                {selectedStartingXI.map((player, idx) => (
+                  <div key={idx} className="selected-player">
+                    <span>#{idx + 1}</span>
+                    <span>{player?.fullName} ({player?.squadNum})</span>
+                    <button onClick={() => setStartingXI(startingXI.filter((_, i) => i !== idx))}>✕</button>
+                  </div>
+                ))}
                 {startingXI.length < 11 && (
                   <select className="player-dropdown" onChange={(e) => {
-                    const playerID = parseInt(e.target.value);
-                    setStartingXI([...startingXI, playerID]);
-                    e.target.value = '';
+                    if (e.target.value) {
+                      const playerID = parseInt(e.target.value);
+                      setStartingXI([...startingXI, playerID]);
+                      e.target.value = '';
+                    }
                   }}>
-                    <option value="">+ Add Player</option>
+                    <option value="">+ Add Player ({startingXI.length}/11)</option>
                     {availablePlayers.map(p => (
                       <option key={p.id} value={p.id}>
-                        {p.fullName} ({p.squadNum})
+                        {p.fullName} (#{p.squadNum})
                       </option>
                     ))}
                   </select>
                 )}
               </div>
+              <div className="count-badge">{startingXI.length}/11 selected</div>
             </div>
 
             {/* Substitutes Dropdowns */}
             <div className="selection-section">
               <h2>Substitutes (Min. 1)</h2>
               <div className="player-list">
-                {subPlayers.map((playerID, idx) => {
-                  const player = allPlayers.find(p => p.id === playerID);
-                  return (
-                    <div key={idx} className="selected-player">
-                      <span>Sub {idx + 1}</span>
-                      <span>{player.fullName}</span>
-                      <button onClick={() => setSubs(subs.filter((_, i) => i !== idx))}>✕</button>
-                    </div>
-                  );
-                })}
-                {(
-                  <select className="player-dropdown" onChange={(e) => {
+                {selectedSubs.map((player, idx) => (
+                  <div key={idx} className="selected-player">
+                    <span>Sub {idx + 1}</span>
+                    <span>{player?.fullName} ({player?.squadNum})</span>
+                    <button onClick={() => setSubs(subs.filter((_, i) => i !== idx))}>✕</button>
+                  </div>
+                ))}
+                <select className="player-dropdown" onChange={(e) => {
+                  if (e.target.value) {
                     const playerID = parseInt(e.target.value);
                     setSubs([...subs, playerID]);
                     e.target.value = '';
-                  }}>
-                    <option value="">+ Add Substitute</option>
-                    {availablePlayers.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.fullName} ({p.squadNum})
-                      </option>
-                    ))}
-                  </select>
-                )}
+                  }
+                }}>
+                  <option value="">+ Add Substitute ({subs.length} added)</option>
+                  {availablePlayers.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.fullName} (#{p.squadNum})
+                    </option>
+                  ))}
+                </select>
               </div>
+              <div className="count-badge">{subs.length} substitutes ready</div>
             </div>
           </div>
 
@@ -236,7 +267,7 @@ export default function App() {
             onClick={handleSelectStartingXI}
             disabled={startingXI.length !== 11 || subs.length === 0}
           >
-            Continue → Select Formation
+            Continue → Select Formation ({startingXI.length}/11, {subs.length} subs)
           </button>
         </div>
       </div>
@@ -275,6 +306,7 @@ export default function App() {
       DEF: { y: '75%' },
       MID: { y: '50%' },
       FWD: { y: '25%' },
+      '': { y: '50%' }, // Default if no position
     };
 
     return (
@@ -300,26 +332,24 @@ export default function App() {
 
               {/* Player markers */}
               {players.map((player, idx) => {
-                const defCount = players.filter(p => p.position === 'DEF').length;
-                const midCount = players.filter(p => p.position === 'MID').length;
-
-                let xPosition;
-                const playersByPosition = players.filter(p => p.position === player.position);
+                const playersByPosition = players.filter(p => p.position === player.position || (p.position === '' && player.position === ''));
                 const posIdx = playersByPosition.indexOf(player);
 
+                let xPosition;
                 if (player.position === 'GK') xPosition = 50;
                 else {
                   const xSpacing = 60 / (playersByPosition.length + 1);
                   xPosition = 20 + xSpacing * (posIdx + 1);
                 }
 
-                const yPosition = pitchPositions[player.position]?.y || '50%';
+                const yStr = pitchPositions[player.position]?.y || '50%';
+                const yPosition = parseInt(yStr) / 100 * 100;
 
                 return (
                   <g key={idx} onClick={() => handlePlayerTap(player)}>
                     <circle
                       cx={xPosition}
-                      cy={parseInt(yPosition) / 100 * 100}
+                      cy={yPosition}
                       r="3"
                       fill="#FF6B6B"
                       stroke="white"
@@ -328,7 +358,7 @@ export default function App() {
                     />
                     <text
                       x={xPosition}
-                      y={parseInt(yPosition) / 100 * 100 + 0.5}
+                      y={yPosition + 0.5}
                       textAnchor="middle"
                       dominantBaseline="middle"
                       fill="white"
@@ -390,7 +420,7 @@ export default function App() {
                     const subPlayer = allPlayers.find(p => p.id === subID);
                     return (
                       <option key={subID} value={subID}>
-                        {subPlayer.fullName} ({subPlayer.squadNum})
+                        {subPlayer?.fullName} (#{subPlayer?.squadNum})
                       </option>
                     );
                   })}
