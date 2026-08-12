@@ -532,7 +532,17 @@ export default function App() {
             <div className="xi-cards-grid">
               {selectedXI.map(player => (
                 <div key={player.id} className="xi-card">
-                  <div className="xi-photo-placeholder">👤</div>
+                  <div className="xi-photo">
+                    <img 
+                      src={`/players/${player.firstName}_${player.surname}_2.jpg`}
+                      alt={`${player.firstName} ${player.surname}`}
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex';
+                      }}
+                    />
+                    <div className="xi-photo-placeholder" style={{display: 'none'}}>👤</div>
+                  </div>
                   <div className="xi-num">#{player.squadNum}</div>
                   <div className="xi-name">{player.firstName} {player.surname}</div>
                 </div>
@@ -836,7 +846,17 @@ export default function App() {
             <div className="xi-cards-grid">
               {selectedXI.map(player => (
                 <div key={player.id} className="xi-card">
-                  <div className="xi-photo-placeholder">👤</div>
+                  <div className="xi-photo">
+                    <img 
+                      src={`/players/${player.firstName}_${player.surname}_2.jpg`}
+                      alt={`${player.firstName} ${player.surname}`}
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex';
+                      }}
+                    />
+                    <div className="xi-photo-placeholder" style={{display: 'none'}}>👤</div>
+                  </div>
                   <div className="xi-num">#{player.squadNum}</div>
                   <div className="xi-name">{player.firstName} {player.surname}</div>
                 </div>

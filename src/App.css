@@ -1802,6 +1802,25 @@ html, body, #root {
   border: 2px solid rgba(0, 217, 255, 0.3);
 }
 
+.xi-photo {
+  width: 80px;
+  height: 80px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  background: rgba(0, 217, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.xi-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
 .xi-num {
   font-size: 1.3rem;
   font-weight: 800;
