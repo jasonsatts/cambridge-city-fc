@@ -1246,12 +1246,13 @@ export default function App() {
                 onTouchStart={(e) => handlePlayerMouseDown(e, player)}
                 style={{ cursor: 'grab' }}
               >
-                <circle cx={player.x} cy={player.y} r="5" fill="#FF6B6B" stroke="white" strokeWidth="0.8" />
-                <text x={player.x} y={player.y - 2} textAnchor="middle" fill="white" fontSize="2.5" fontWeight="bold" style={{ pointerEvents: 'none' }}>
+                <circle cx={player.x} cy={player.y} r="8.5" fill="#FF6B6B" stroke="white" strokeWidth="1.2" />
+                <circle cx={player.x} cy={player.y} r="8" fill="none" stroke="white" strokeWidth="0.3" opacity="0.6" />
+                <text x={player.x} y={player.y + 0.8} textAnchor="middle" fill="white" fontSize="3.2" fontWeight="900" style={{ pointerEvents: 'none', letterSpacing: '-0.1' }}>
                   {player.squadNum}
                 </text>
-                <text x={player.x} y={player.y + 2.5} textAnchor="middle" fill="white" fontSize="1.6" style={{ pointerEvents: 'none' }}>
-                  {player.firstName}
+                <text x={player.x} y={player.y + 5.5} textAnchor="middle" fill="white" fontSize="2.1" fontWeight="700" style={{ pointerEvents: 'none' }}>
+                  {player.firstName.substring(0, 6)}
                 </text>
               </g>
             ))}

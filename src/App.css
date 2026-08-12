@@ -760,59 +760,134 @@ html, body, #root {
 
 .action-buttons {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin-bottom: 20px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-bottom: 28px;
+  padding: 20px;
+  background: rgba(0, 217, 255, 0.05);
+  border-radius: 16px;
+  border: 1px solid rgba(0, 217, 255, 0.1);
 }
 
 .btn-action {
-  background: var(--bg-tertiary);
-  border: 2px solid rgba(0, 217, 255, 0.2);
-  border-radius: 10px;
-  padding: 16px 12px;
-  font-size: 1.8rem;
+  background: var(--bg-secondary);
+  border: 2px solid rgba(0, 217, 255, 0.3);
+  border-radius: 14px;
+  padding: 14px 8px;
+  font-size: 1.6rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   display: flex;
   align-items: center;
   justify-content: center;
+  aspect-ratio: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-action::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 217, 255, 0.1);
+  transition: left 0.3s ease;
+}
+
+.btn-action:hover::before {
+  left: 100%;
 }
 
 .btn-action:hover {
-  border-color: var(--primary);
-  background: var(--bg-tertiary);
-  transform: translateY(-2px);
+  border-color: currentColor;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 217, 255, 0.25);
 }
 
-.btn-goal { border-color: var(--success-light); }
-.btn-goal:hover { border-color: var(--success-light); box-shadow: 0 0 12px rgba(46, 204, 113, 0.2); }
+.btn-goal { border-color: #2ECC71; }
+.btn-goal:hover { 
+  border-color: #2ECC71;
+  box-shadow: 0 0 20px rgba(46, 204, 113, 0.3);
+  background: rgba(46, 204, 113, 0.1);
+}
 
 .btn-assist { border-color: var(--primary); }
-.btn-assist:hover { border-color: var(--primary); box-shadow: 0 0 12px rgba(0, 217, 255, 0.2); }
+.btn-assist:hover { 
+  border-color: var(--primary);
+  box-shadow: 0 0 20px rgba(0, 217, 255, 0.3);
+  background: rgba(0, 217, 255, 0.1);
+}
 
-.btn-yellow { border-color: var(--warning); }
-.btn-yellow:hover { border-color: var(--warning); box-shadow: 0 0 12px rgba(243, 156, 18, 0.2); }
+.btn-yellow { border-color: #F39C12; }
+.btn-yellow:hover { 
+  border-color: #F39C12;
+  box-shadow: 0 0 20px rgba(243, 156, 18, 0.3);
+  background: rgba(243, 156, 18, 0.1);
+}
 
-.btn-red { border-color: var(--danger-light); }
-.btn-red:hover { border-color: var(--danger-light); box-shadow: 0 0 12px rgba(252, 129, 129, 0.2); }
+.btn-red { border-color: #E74C3C; }
+.btn-red:hover { 
+  border-color: #E74C3C;
+  box-shadow: 0 0 20px rgba(231, 76, 60, 0.3);
+  background: rgba(231, 76, 60, 0.1);
+}
 
 .btn-motm { border-color: var(--secondary); }
-.btn-motm:hover { border-color: var(--secondary); box-shadow: 0 0 12px rgba(255, 107, 157, 0.2); }
+.btn-motm:hover { 
+  border-color: var(--secondary);
+  box-shadow: 0 0 20px rgba(255, 107, 157, 0.3);
+  background: rgba(255, 107, 157, 0.1);
+}
 
 .sub-section {
-  margin-bottom: 15px;
-  padding-top: 15px;
-  border-top: 1px solid rgba(0, 217, 255, 0.1);
+  margin-bottom: 0;
+  padding: 20px;
+  background: rgba(255, 107, 157, 0.05);
+  border: 1px solid rgba(255, 107, 157, 0.2);
+  border-radius: 14px;
+  margin-top: 20px;
 }
 
 .sub-section label {
   display: block;
   font-size: 0.85rem;
   font-weight: 700;
-  color: var(--text-secondary);
-  margin-bottom: 10px;
+  color: var(--secondary);
+  margin-bottom: 12px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.6px;
+}
+
+.sub-dropdown {
+  width: 100%;
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+  border: 2px solid rgba(255, 107, 157, 0.3);
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 600;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 20px;
+  padding-right: 40px;
+}
+
+.sub-dropdown:hover {
+  border-color: var(--secondary);
+  box-shadow: 0 0 15px rgba(255, 107, 157, 0.2);
+}
+
+.sub-dropdown:focus {
+  outline: none;
+  border-color: var(--secondary);
+  box-shadow: 0 0 0 4px rgba(255, 107, 157, 0.15);
 }
 
 .close-btn {
