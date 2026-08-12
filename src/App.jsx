@@ -1,443 +1,409 @@
-import { useState, useEffect } from "react";
-import { createClient } from "@supabase/supabase-js";
+import React, { useState, useEffect } from 'react';
+import './App.css';
 
-const SUPABASE_URL = "https://fmzhanxealuyvkyfamdr.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZtemhhbnhlYWx1eXZreWZhbWRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjMwNDAxNDcsImV4cCI6MjAzODYxNjE0N30.ZKBkY3l71MxK8zJk0QA3B5TLQi_0oQH2K-QrD3KyDWo";
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Google Sheet ID and configuration
+const SHEET_ID = '1HNU4KIb_84KTASKqwV32Jeo3Wcr4jJyV2px5hM9eC9s';
+const PLAYERS_RANGE = 'Players!A2:D'; // Fetch First Name, Surname, Squad #, Position
 
-// ─── COLORS ───────────────────────────────────────────────
-const BLACK = "#0a0a0a";
-const DARK = "#111111";
-const CARD = "#1a1a1a";
-const WHITE = "#ffffff";
-const GRAY = "#888888";
-const GREEN = "#27ae60";
-const RED = "#e74c3c";
-const YELLOW = "#f39c12";
-const ACCENT = "#c8c8c8";
-const PITCH_GREEN = "#2d5a2d";
-
-// ─── FORMATIONS ───────────────────────────────────────────
+// Formation templates
 const FORMATIONS = {
-  "1-4-4-2": { gk: 1, def: 4, mid: 4, fwd: 2 },
-  "1-4-5-1": { gk: 1, def: 4, mid: 5, fwd: 1 },
-  "1-4-3-3": { gk: 1, def: 4, mid: 3, fwd: 3 },
-  "1-5-4-1": { gk: 1, def: 5, mid: 4, fwd: 1 },
-  "1-3-5-2": { gk: 1, def: 3, mid: 5, fwd: 2 },
+  '1-4-4-2': { def: 4, mid: 4, fwd: 2 },
+  '1-4-5-1': { def: 4, mid: 5, fwd: 1 },
+  '1-4-3-3': { def: 4, mid: 3, fwd: 3 },
+  '1-5-4-1': { def: 5, mid: 4, fwd: 1 },
+  '1-3-5-2': { def: 3, mid: 5, fwd: 2 },
 };
 
-// ─── U15s GIRLS PLAYERS ───────────────────────────────────
-const ALL_PLAYERS = [
-  { id: 1, first: "Ella", last: "Hodson", pos: "GK" },
-  { id: 2, first: "Amelia", last: "Wilson", pos: "DEF" },
-  { id: 3, first: "Mia", last: "Thompson", pos: "DEF" },
-  { id: 4, first: "Lily", last: "Johnson", pos: "DEF" },
-  { id: 5, first: "Sophie", last: "Davies", pos: "DEF" },
-  { id: 6, first: "Charlotte", last: "Rose", pos: "MID" },
-  { id: 7, first: "Evie", last: "Brown", pos: "MID" },
-  { id: 8, first: "Chloe", last: "Martin", pos: "MID" },
-  { id: 9, first: "Grace", last: "Ellis", pos: "FWD" },
-  { id: 10, first: "Poppy", last: "Newman", pos: "FWD" },
-  { id: 11, first: "Freya", last: "Peterson", pos: "FWD" },
-  { id: 12, first: "Isabelle", last: "Collins", pos: "MID" },
-  { id: 13, first: "Matilda", last: "Martinon-Rodriguez", pos: "DEF" },
-  { id: 14, first: "Lucy", last: "Bennett", pos: "FWD" },
-  { id: 15, first: "Emma", last: "Taylor", pos: "DEF" },
-  { id: 16, first: "Olivia", last: "Cooper", pos: "MID" },
-  { id: 17, first: "Hannah", last: "Roberts", pos: "FWD" },
-  { id: 18, first: "Bethan", last: "McColl", pos: "DEF" },
-];
+export default function App() {
+  const [screen, setScreen] = useState('setup'); // setup -> lineup -> formation -> match
+  const [allPlayers, setAllPlayers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-// ─── PITCH POSITIONS FOR FORMATIONS ───────────────────────
-const getPitchPositions = (formation) => {
-  const config = FORMATIONS[formation];
-  const positions = {};
-  
-  // GK position (center, back)
-  positions.gk = [{ x: 50, y: 92 }];
-  
-  // Defenders (spread across back line)
-  positions.def = [];
-  const defSpacing = 100 / (config.def + 1);
-  for (let i = 0; i < config.def; i++) {
-    positions.def.push({ x: defSpacing * (i + 1), y: 75 });
-  }
-  
-  // Midfielders (middle of pitch)
-  positions.mid = [];
-  const midSpacing = 100 / (config.mid + 1);
-  for (let i = 0; i < config.mid; i++) {
-    positions.mid.push({ x: midSpacing * (i + 1), y: 50 });
-  }
-  
-  // Forwards (attack line)
-  positions.fwd = [];
-  const fwdSpacing = 100 / (config.fwd + 1);
-  for (let i = 0; i < config.fwd; i++) {
-    positions.fwd.push({ x: fwdSpacing * (i + 1), y: 25 });
-  }
-  
-  return positions;
-};
+  // Lineup selection state
+  const [startingXI, setStartingXI] = useState([]);
+  const [subs, setSubs] = useState([]);
 
-// ─── ACTION BUTTON STYLE ───────────────────────────────────
-const actionButtonStyle = () => ({
-  padding: "12px",
-  border: "none",
-  borderRadius: "6px",
-  fontWeight: 700,
-  cursor: "pointer",
-  fontSize: "13px",
-  color: WHITE,
-  flex: 1
-});
-
-// ─── MAIN APP ───────────────────────────────────────────────
-function MatchTracker() {
-  const [formation, setFormation] = useState("1-4-4-2");
-  const [gameState, setGameState] = useState("setup"); // setup, playing
+  // Match state
+  const [formation, setFormation] = useState('1-4-4-2');
+  const [matchStarted, setMatchStarted] = useState(false);
+  const [players, setPlayers] = useState([]);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
-  const [actionMenu, setActionMenu] = useState(false);
-  const [onPitch, setOnPitch] = useState([]);
-  const [bench, setBench] = useState([]);
-  const [stats, setStats] = useState({});
+  const [showActionModal, setShowActionModal] = useState(false);
   const [events, setEvents] = useState([]);
-  const [subMenuOpen, setSubMenuOpen] = useState(false);
+  const [stats, setStats] = useState({});
 
-  // Initialize stats for all players
+  // Fetch players from Google Sheet
   useEffect(() => {
-    const initialStats = {};
-    ALL_PLAYERS.forEach(p => {
-      initialStats[p.id] = { 
-        goals: 0, 
-        assists: 0, 
-        yellow: 0, 
-        red: 0, 
-        motm: false, 
-        timeOn: 0 
-      };
-    });
-    setStats(initialStats);
+    fetchPlayers();
   }, []);
 
-  // Handle formation change
-  const handleFormationChange = (newFormation) => {
-    setFormation(newFormation);
+  const fetchPlayers = async () => {
+    try {
+      setLoading(true);
+      const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${PLAYERS_RANGE}?key=AIzaSyDyWYaVb-6b6W3U9j36AhRMXV1W4bKegxQ`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.values) {
+        const players = data.values.map((row, idx) => ({
+          id: idx + 1,
+          firstName: row[0] || '',
+          surname: row[1] || '',
+          squadNum: row[2] || idx + 1,
+          position: row[3] || '',
+          fullName: `${row[0] || ''} ${row[1] || ''}`.trim(),
+        }));
+        setAllPlayers(players);
+        // Initialize stats
+        const initialStats = {};
+        players.forEach(p => {
+          initialStats[p.id] = { goals: 0, assists: 0, yellow: 0, red: 0, motm: 0, onPitch: false, subOnTime: null };
+        });
+        setStats(initialStats);
+      }
+      setError('');
+    } catch (err) {
+      console.error('Error fetching players:', err);
+      setError('Failed to load players from Google Sheet');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Start match - set players on pitch
-  const startMatch = () => {
-    const config = FORMATIONS[formation];
-    const totalOnPitch = config.gk + config.def + config.mid + config.fwd;
-    
-    // Separate by position
-    const gkPlayers = ALL_PLAYERS.filter(p => p.pos === "GK").slice(0, config.gk);
-    const defPlayers = ALL_PLAYERS.filter(p => p.pos === "DEF").slice(0, config.def);
-    const midPlayers = ALL_PLAYERS.filter(p => p.pos === "MID").slice(0, config.mid);
-    const fwdPlayers = ALL_PLAYERS.filter(p => p.pos === "FWD").slice(0, config.fwd);
-    
-    const starting = [...gkPlayers, ...defPlayers, ...midPlayers, ...fwdPlayers];
-    const benched = ALL_PLAYERS.filter(p => !starting.includes(p));
-    
-    setOnPitch(starting);
-    setBench(benched);
-    setGameState("playing");
+  const handleSelectStartingXI = () => {
+    if (startingXI.length === 11 && subs.length > 0) {
+      setScreen('formation');
+    }
   };
 
-  // Handle player tap
+  const handleFormationSelect = () => {
+    if (formation) {
+      // Set up pitch with selected starting XI
+      const pitchPlayers = startingXI.map((playerID) => {
+        const player = allPlayers.find(p => p.id === playerID);
+        return { ...player, onPitch: true };
+      });
+      setPlayers(pitchPlayers);
+      setMatchStarted(true);
+      setScreen('match');
+    }
+  };
+
   const handlePlayerTap = (player) => {
     setSelectedPlayer(player);
-    setActionMenu(true);
-    setSubMenuOpen(false);
+    setShowActionModal(true);
   };
 
-  // Log action
-  const logAction = (action, subPlayer = null) => {
-    if (action === "sub" && subPlayer) {
-      // Swap players
-      setOnPitch(onPitch.map(p => p.id === selectedPlayer.id ? subPlayer : p));
-      setBench(bench.map(p => p.id === subPlayer.id ? selectedPlayer : p));
-      setEvents(prev => [...prev, { 
-        player: selectedPlayer.first + " " + selectedPlayer.last, 
-        action: "Subbed off", 
-        time: new Date().toLocaleTimeString() 
-      }]);
-      setEvents(prev => [...prev, { 
-        player: subPlayer.first + " " + subPlayer.last, 
-        action: "Subbed on", 
-        time: new Date().toLocaleTimeString() 
-      }]);
-    } else {
-      // Update stats
-      const newStats = { ...stats };
-      if (action === "goal") newStats[selectedPlayer.id].goals += 1;
-      if (action === "assist") newStats[selectedPlayer.id].assists += 1;
-      if (action === "yellow") newStats[selectedPlayer.id].yellow += 1;
-      if (action === "red") newStats[selectedPlayer.id].red += 1;
-      if (action === "motm") newStats[selectedPlayer.id].motm = true;
-      setStats(newStats);
-      
-      setEvents(prev => [...prev, { 
-        player: selectedPlayer.first + " " + selectedPlayer.last, 
-        action: action.charAt(0).toUpperCase() + action.slice(1), 
-        time: new Date().toLocaleTimeString() 
-      }]);
+  const recordEvent = (eventType, note = '') => {
+    const time = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    const newEvent = {
+      timestamp: time,
+      player: selectedPlayer.fullName,
+      squadNum: selectedPlayer.squadNum,
+      event: eventType,
+      note,
+    };
+    setEvents([newEvent, ...events]);
+
+    // Update stats
+    const updatedStats = { ...stats };
+    if (!updatedStats[selectedPlayer.id]) {
+      updatedStats[selectedPlayer.id] = { goals: 0, assists: 0, yellow: 0, red: 0, motm: 0, onPitch: false };
     }
-    
-    setActionMenu(false);
-    setSelectedPlayer(null);
-    setSubMenuOpen(false);
+
+    switch (eventType) {
+      case 'Goal':
+        updatedStats[selectedPlayer.id].goals += 1;
+        break;
+      case 'Assist':
+        updatedStats[selectedPlayer.id].assists += 1;
+        break;
+      case 'Yellow':
+        updatedStats[selectedPlayer.id].yellow += 1;
+        break;
+      case 'Red':
+        updatedStats[selectedPlayer.id].red += 1;
+        break;
+      case 'MOTM':
+        updatedStats[selectedPlayer.id].motm += 1;
+        break;
+    }
+
+    setStats(updatedStats);
+    setShowActionModal(false);
   };
 
-  const pitchPositions = getPitchPositions(formation);
+  const handleSubstitution = (subPlayerID) => {
+    const subPlayer = allPlayers.find(p => p.id === subPlayerID);
+    
+    // Record sub off
+    recordEvent('Sub Off', `Replaced by ${subPlayer.fullName}`);
+    
+    // Update pitch players
+    const updatedPlayers = players.map(p =>
+      p.id === selectedPlayer.id ? { ...subPlayer, onPitch: true } : p
+    );
+    setPlayers(updatedPlayers);
+    setSelectedPlayer(null);
+    setShowActionModal(false);
+  };
 
-  return (
-    <div style={{ background: BLACK, color: WHITE, minHeight: "100vh", paddingBottom: 20, fontFamily: "system-ui,-apple-system" }}>
-      {/* HEADER */}
-      <div style={{ background: `linear-gradient(135deg,${DARK},${CARD})`, padding: "16px", borderBottom: `1px solid rgba(255,255,255,0.1)` }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: ACCENT, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>⚽ Cambridge City FC</div>
-        <div style={{ fontSize: 20, fontWeight: 800 }}>U15s Girls Match Tracker</div>
-      </div>
+  // ========== SCREENS ==========
 
-      {/* SETUP SCREEN */}
-      {gameState === "setup" && (
-        <div style={{ padding: "20px" }}>
-          <div style={{ marginBottom: "30px" }}>
-            <h3 style={{ marginBottom: "12px", fontSize: "14px", fontWeight: 700, textTransform: "uppercase", color: GRAY }}>Select Formation</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
-              {Object.keys(FORMATIONS).map(form => (
-                <button
-                  key={form}
-                  onClick={() => handleFormationChange(form)}
-                  style={{
-                    padding: "12px",
-                    background: formation === form ? GREEN : CARD,
-                    color: formation === form ? BLACK : WHITE,
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: "8px",
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    fontSize: "13px"
-                  }}
-                >
-                  {form}
-                </button>
-              ))}
+  if (loading) return <div className="container"><h1>Loading players...</h1></div>;
+
+  // SCREEN 1: Select Starting XI & Subs
+  if (screen === 'setup') {
+    const availablePlayers = allPlayers.filter(
+      p => !startingXI.includes(p.id) && !subs.includes(p.id)
+    );
+    const subPlayers = allPlayers.filter(p => subs.includes(p.id));
+
+    return (
+      <div className="container">
+        <div className="setup-screen">
+          <h1>⚽ Select Starting XI & Substitutes</h1>
+
+          {error && <div className="error-banner">{error}</div>}
+
+          <div className="selection-grid">
+            {/* Starting XI Dropdowns */}
+            <div className="selection-section">
+              <h2>Starting XI (11 Players)</h2>
+              <div className="player-list">
+                {startingXI.map((playerID, idx) => {
+                  const player = allPlayers.find(p => p.id === playerID);
+                  return (
+                    <div key={idx} className="selected-player">
+                      <span>#{idx + 1}</span>
+                      <span>{player.fullName}</span>
+                      <button onClick={() => setStartingXI(startingXI.filter((_, i) => i !== idx))}>✕</button>
+                    </div>
+                  );
+                })}
+                {startingXI.length < 11 && (
+                  <select className="player-dropdown" onChange={(e) => {
+                    const playerID = parseInt(e.target.value);
+                    setStartingXI([...startingXI, playerID]);
+                    e.target.value = '';
+                  }}>
+                    <option value="">+ Add Player</option>
+                    {availablePlayers.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.fullName} ({p.squadNum})
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
             </div>
-          </div>
 
-          <div style={{ marginBottom: "30px" }}>
-            <h3 style={{ marginBottom: "12px", fontSize: "14px", fontWeight: 700, textTransform: "uppercase", color: GRAY }}>Starting XI Setup</h3>
-            <div style={{ background: CARD, padding: "16px", borderRadius: "8px", fontSize: "12px", lineHeight: "1.8", color: GRAY }}>
-              <p style={{ margin: 0 }}>📊 <strong>Coach:</strong> Set your lineup in the Google Sheets</p>
-              <p style={{ marginTop: "8px", margin: 0 }}>👥 <strong>Players:</strong> App loads automatically</p>
-              <p style={{ marginTop: "8px", margin: 0 }}>Formation: <strong>{formation}</strong></p>
+            {/* Substitutes Dropdowns */}
+            <div className="selection-section">
+              <h2>Substitutes (Min. 1)</h2>
+              <div className="player-list">
+                {subPlayers.map((playerID, idx) => {
+                  const player = allPlayers.find(p => p.id === playerID);
+                  return (
+                    <div key={idx} className="selected-player">
+                      <span>Sub {idx + 1}</span>
+                      <span>{player.fullName}</span>
+                      <button onClick={() => setSubs(subs.filter((_, i) => i !== idx))}>✕</button>
+                    </div>
+                  );
+                })}
+                {(
+                  <select className="player-dropdown" onChange={(e) => {
+                    const playerID = parseInt(e.target.value);
+                    setSubs([...subs, playerID]);
+                    e.target.value = '';
+                  }}>
+                    <option value="">+ Add Substitute</option>
+                    {availablePlayers.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.fullName} ({p.squadNum})
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
             </div>
           </div>
 
           <button
-            onClick={startMatch}
-            style={{
-              width: "100%",
-              padding: "16px",
-              background: GREEN,
-              color: BLACK,
-              border: "none",
-              borderRadius: "8px",
-              fontWeight: 700,
-              fontSize: "14px",
-              cursor: "pointer"
-            }}
+            className="btn-primary"
+            onClick={handleSelectStartingXI}
+            disabled={startingXI.length !== 11 || subs.length === 0}
           >
-            START MATCH
+            Continue → Select Formation
           </button>
         </div>
-      )}
+      </div>
+    );
+  }
 
-      {/* MATCH SCREEN */}
-      {gameState === "playing" && (
-        <div style={{ padding: "20px" }}>
-          {/* PITCH */}
-          <div style={{
-            background: PITCH_GREEN,
-            border: "3px solid rgba(255,255,255,0.3)",
-            borderRadius: "12px",
-            position: "relative",
-            aspectRatio: "10 / 13",
-            marginBottom: "20px",
-            overflow: "hidden"
-          }}>
-            {/* Field lines SVG */}
-            <svg style={{ position: "absolute", width: "100%", height: "100%", top: 0, left: 0 }} viewBox="0 0 100 130">
-              <line x1="0" y1="65" x2="100" y2="65" stroke="rgba(255,255,255,0.2)" strokeWidth="0.5" />
-              <circle cx="50" cy="65" r="8" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="0.5" />
-              <circle cx="50" cy="65" r="0.5" fill="rgba(255,255,255,0.3)" />
-              <rect x="15" y="5" width="70" height="20" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="0.5" />
-              <rect x="15" y="105" width="70" height="20" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="0.5" />
+  // SCREEN 2: Select Formation
+  if (screen === 'formation') {
+    return (
+      <div className="container">
+        <div className="formation-screen">
+          <h1>📋 Select Formation</h1>
+          <div className="formation-grid">
+            {Object.keys(FORMATIONS).map(form => (
+              <button
+                key={form}
+                className={`formation-btn ${formation === form ? 'active' : ''}`}
+                onClick={() => setFormation(form)}
+              >
+                {form}
+              </button>
+            ))}
+          </div>
+          <button className="btn-primary" onClick={handleFormationSelect}>
+            Start Match ⚽
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // SCREEN 3: Match View
+  if (screen === 'match' && matchStarted) {
+    const pitchPositions = {
+      GK: { y: '92%' },
+      DEF: { y: '75%' },
+      MID: { y: '50%' },
+      FWD: { y: '25%' },
+    };
+
+    return (
+      <div className="container match-container">
+        <div className="match-view">
+          {/* Football Pitch */}
+          <div className="pitch-container">
+            <svg viewBox="0 0 100 100" className="pitch">
+              {/* Pitch background */}
+              <rect width="100" height="100" fill="#2d5016" />
+              {/* Halfway line */}
+              <line x1="50" y1="0" x2="50" y2="100" stroke="white" strokeWidth="0.3" />
+              {/* Centre circle */}
+              <circle cx="50" cy="50" r="8" stroke="white" strokeWidth="0.2" fill="none" />
+              {/* Centre spot */}
+              <circle cx="50" cy="50" r="0.5" fill="white" />
+              {/* Penalty boxes */}
+              <rect x="5" y="35" width="15" height="30" stroke="white" strokeWidth="0.2" fill="none" />
+              <rect x="80" y="35" width="15" height="30" stroke="white" strokeWidth="0.2" fill="none" />
+              {/* Goal areas */}
+              <rect x="0" y="40" width="5" height="20" stroke="white" strokeWidth="0.15" fill="none" />
+              <rect x="95" y="40" width="5" height="20" stroke="white" strokeWidth="0.15" fill="none" />
+
+              {/* Player markers */}
+              {players.map((player, idx) => {
+                const defCount = players.filter(p => p.position === 'DEF').length;
+                const midCount = players.filter(p => p.position === 'MID').length;
+
+                let xPosition;
+                const playersByPosition = players.filter(p => p.position === player.position);
+                const posIdx = playersByPosition.indexOf(player);
+
+                if (player.position === 'GK') xPosition = 50;
+                else {
+                  const xSpacing = 60 / (playersByPosition.length + 1);
+                  xPosition = 20 + xSpacing * (posIdx + 1);
+                }
+
+                const yPosition = pitchPositions[player.position]?.y || '50%';
+
+                return (
+                  <g key={idx} onClick={() => handlePlayerTap(player)}>
+                    <circle
+                      cx={xPosition}
+                      cy={parseInt(yPosition) / 100 * 100}
+                      r="3"
+                      fill="#FF6B6B"
+                      stroke="white"
+                      strokeWidth="0.3"
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <text
+                      x={xPosition}
+                      y={parseInt(yPosition) / 100 * 100 + 0.5}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fill="white"
+                      fontSize="1.5"
+                      fontWeight="bold"
+                      style={{ cursor: 'pointer', pointerEvents: 'none' }}
+                    >
+                      {player.squadNum}
+                    </text>
+                  </g>
+                );
+              })}
             </svg>
-
-            {/* PLAYERS ON PITCH */}
-            {onPitch.map((player, idx) => {
-              const posType = player.pos === "GK" ? "gk" : player.pos === "DEF" ? "def" : player.pos === "MID" ? "mid" : "fwd";
-              const posIndex = onPitch.filter(p => p.pos === player.pos).indexOf(player);
-              const pos = pitchPositions[posType][posIndex];
-              
-              return (
-                <div
-                  key={player.id}
-                  onClick={() => handlePlayerTap(player)}
-                  style={{
-                    position: "absolute",
-                    left: `${pos.x}%`,
-                    top: `${pos.y}%`,
-                    transform: "translate(-50%, -50%)",
-                    background: `linear-gradient(135deg,${CARD},${DARK})`,
-                    border: selectedPlayer?.id === player.id ? `2px solid ${GREEN}` : "2px solid rgba(255,255,255,0.2)",
-                    borderRadius: "8px",
-                    padding: "8px 12px",
-                    cursor: "pointer",
-                    textAlign: "center",
-                    minWidth: "70px",
-                    transition: "all 0.2s",
-                    boxShadow: selectedPlayer?.id === player.id ? `0 0 10px ${GREEN}` : "none",
-                    zIndex: selectedPlayer?.id === player.id ? 10 : 1
-                  }}
-                >
-                  <div style={{ fontSize: "11px", fontWeight: 700, color: ACCENT }}>{player.first}</div>
-                  <div style={{ fontSize: "10px", color: WHITE }}>{player.last}</div>
-                  {stats[player.id] && stats[player.id].goals > 0 && (
-                    <div style={{ fontSize: "9px", color: GREEN, marginTop: "4px" }}>⚽ {stats[player.id].goals}</div>
-                  )}
-                </div>
-              );
-            })}
           </div>
 
-          {/* ACTION MENU */}
-          {actionMenu && selectedPlayer && (
-            <div style={{
-              background: DARK,
-              border: `1px solid ${GREEN}`,
-              borderRadius: "8px",
-              padding: "16px",
-              marginBottom: "20px"
-            }}>
-              <div style={{ marginBottom: "16px", fontSize: "14px", fontWeight: 700, color: ACCENT }}>
-                {selectedPlayer.first} {selectedPlayer.last}
-              </div>
-              
-              {/* ACTION BUTTONS */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "16px" }}>
-                <button 
-                  onClick={() => logAction("goal")} 
-                  style={{ ...actionButtonStyle(), background: GREEN, color: BLACK }}
-                >
-                  ⚽ Goal
-                </button>
-                <button 
-                  onClick={() => logAction("assist")} 
-                  style={{ ...actionButtonStyle(), background: ACCENT, color: BLACK }}
-                >
-                  🎯 Assist
-                </button>
-                <button 
-                  onClick={() => logAction("yellow")} 
-                  style={{ ...actionButtonStyle(), background: YELLOW, color: BLACK }}
-                >
-                  🟨 Yellow
-                </button>
-                <button 
-                  onClick={() => logAction("red")} 
-                  style={{ ...actionButtonStyle(), background: RED }}
-                >
-                  🟥 Red
-                </button>
-                <button 
-                  onClick={() => logAction("motm")} 
-                  style={{ ...actionButtonStyle(), background: ACCENT, color: BLACK }}
-                >
-                  👑 MOTM
-                </button>
-                <button 
-                  onClick={() => setActionMenu(false)} 
-                  style={{ ...actionButtonStyle(), background: GRAY }}
-                >
-                  ✕ Close
-                </button>
-              </div>
-
-              {/* SUBSTITUTION SECTION */}
-              {bench.length > 0 && (
-                <div style={{ 
-                  paddingTop: "16px", 
-                  borderTop: `1px solid rgba(255,255,255,0.1)` 
-                }}>
-                  <div style={{ fontSize: "12px", fontWeight: 700, marginBottom: "8px", textTransform: "uppercase", color: GRAY }}>
-                    Substitute Player
-                  </div>
-                  <select
-                    onChange={(e) => {
-                      const subPlayer = ALL_PLAYERS.find(p => p.id === parseInt(e.target.value));
-                      if (subPlayer) logAction("sub", subPlayer);
-                    }}
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      background: CARD,
-                      color: WHITE,
-                      border: `1px solid ${GREEN}`,
-                      borderRadius: "6px",
-                      fontSize: "12px",
-                      fontWeight: 600
-                    }}
-                  >
-                    <option value="">Select a sub from bench...</option>
-                    {bench.map(p => (
-                      <option key={p.id} value={p.id}>{p.first} {p.last}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* STATS SECTION */}
-          <div style={{ background: CARD, borderRadius: "8px", padding: "16px", marginBottom: "20px", border: `1px solid rgba(255,255,255,0.1)` }}>
-            <div style={{ fontSize: "12px", fontWeight: 700, marginBottom: "12px", textTransform: "uppercase", color: GRAY }}>Live Stats</div>
-            <div style={{ fontSize: "11px", lineHeight: "1.9" }}>
-              {onPitch.filter(p => stats[p.id] && (stats[p.id].goals > 0 || stats[p.id].assists > 0 || stats[p.id].yellow > 0 || stats[p.id].red > 0)).length === 0 ? (
-                <div style={{ color: GRAY }}>No actions recorded yet...</div>
+          {/* Events Log */}
+          <div className="events-log">
+            <h3>Match Events</h3>
+            <div className="events-list">
+              {events.length === 0 ? (
+                <p className="no-events">No events yet</p>
               ) : (
-                onPitch.filter(p => stats[p.id] && (stats[p.id].goals > 0 || stats[p.id].assists > 0 || stats[p.id].yellow > 0 || stats[p.id].red > 0)).map(p => (
-                  <div key={p.id} style={{ marginBottom: "8px", padding: "8px", background: DARK, borderRadius: "6px", borderLeft: `3px solid ${GREEN}` }}>
-                    <strong>{p.first} {p.last}:</strong> 
-                    {stats[p.id].goals > 0 && ` ${stats[p.id].goals}G`}
-                    {stats[p.id].assists > 0 && ` ${stats[p.id].assists}A`}
-                    {stats[p.id].yellow > 0 && ` 🟨×${stats[p.id].yellow}`}
-                    {stats[p.id].red > 0 && ` 🟥×${stats[p.id].red}`}
+                events.map((event, idx) => (
+                  <div key={idx} className="event-item">
+                    <span className="time">{event.timestamp}</span>
+                    <span className="event">{event.event}</span>
+                    <span className="player">#{event.squadNum} {event.player}</span>
                   </div>
                 ))
               )}
             </div>
           </div>
-
-          {/* EVENTS LOG */}
-          {events.length > 0 && (
-            <div style={{ background: CARD, borderRadius: "8px", padding: "16px", border: `1px solid rgba(255,255,255,0.1)` }}>
-              <div style={{ fontSize: "12px", fontWeight: 700, marginBottom: "12px", textTransform: "uppercase", color: GRAY }}>Match Events</div>
-              <div style={{ fontSize: "10px", lineHeight: "1.9", maxHeight: "200px", overflowY: "auto" }}>
-                {[...events].reverse().map((e, i) => (
-                  <div key={i} style={{ marginBottom: "6px", padding: "6px", background: DARK, borderRadius: "4px", color: ACCENT }}>
-                    <strong style={{ color: GREEN }}>{e.player}</strong> — {e.action} <span style={{ color: GRAY, fontSize: "9px" }}>({e.time})</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
-      )}
-    </div>
-  );
-}
 
-export default MatchTracker;
+        {/* Action Modal */}
+        {showActionModal && selectedPlayer && (
+          <div className="modal-overlay" onClick={() => setShowActionModal(false)}>
+            <div className="modal-content" onClick={e => e.stopPropagation()}>
+              <h2>{selectedPlayer.fullName}</h2>
+              <p className="squad-num">#{selectedPlayer.squadNum}</p>
+
+              <div className="action-buttons">
+                <button onClick={() => recordEvent('Goal')} className="btn-action btn-goal">⚽ Goal</button>
+                <button onClick={() => recordEvent('Assist')} className="btn-action btn-assist">🎯 Assist</button>
+                <button onClick={() => recordEvent('Yellow')} className="btn-action btn-yellow">🟨 Yellow</button>
+                <button onClick={() => recordEvent('Red')} className="btn-action btn-red">🟥 Red</button>
+                <button onClick={() => recordEvent('MOTM')} className="btn-action btn-motm">👑 MOTM</button>
+              </div>
+
+              {/* Substitution Dropdown */}
+              <div className="sub-section">
+                <label>Substitute:</label>
+                <select onChange={(e) => {
+                  if (e.target.value) handleSubstitution(parseInt(e.target.value));
+                  e.target.value = '';
+                }}>
+                  <option value="">Select a substitute...</option>
+                  {subs.map(subID => {
+                    const subPlayer = allPlayers.find(p => p.id === subID);
+                    return (
+                      <option key={subID} value={subID}>
+                        {subPlayer.fullName} ({subPlayer.squadNum})
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <button onClick={() => setShowActionModal(false)} className="btn-close">✕ Close</button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return null;
+}
