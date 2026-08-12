@@ -262,11 +262,24 @@ export default function App() {
     
     setPlayers(pitchPlayers);
     setCurrentlyOnPitch(onPitch);
+    // Set players array from selected XI
+    const xiPlayers = startingXI.map(id => allPlayers.find(p => p.id === id)).filter(Boolean);
+    const subsPlayers = subs.map(id => allPlayers.find(p => p.id === id)).filter(Boolean);
+    
+    setPlayers(xiPlayers);
     setPlayerTimes(times);
     setMatchStarted(true);
     
-    // Signal to parents that match has started
-    fetch(`/api/match-status?matchCode=${matchCode}&action=start`, { method: 'POST' }).catch(e => console.log('Could not signal match start'));
+    // Signal to parents that match has started (send XI/subs data)
+    
+    fetch(`/api/match-status?matchCode=${matchCode}&action=start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        xi: xiPlayers,
+        subs: subsPlayers
+      })
+    }).catch(e => console.log('Could not signal match start'));
     
     setScreen('select-stats-person');
   };
@@ -516,6 +529,10 @@ export default function App() {
             const data = await response.json();
             if (data.isActive) {
               // Coach has started the match!
+              // Set the XI and subs from coach data
+              if (data.selectedXI && data.selectedXI.length > 0) {
+                setPlayers(data.selectedXI);
+              }
               setMatchStarted(true);
               setScreen('match');
             }
