@@ -14,6 +14,45 @@ const FORMATIONS = {
 // Shareable team sheet ID generator
 const generateTeamSheetId = () => 'TS-' + Math.random().toString(36).substring(2, 10).toUpperCase();
 
+
+// Feminine silhouette placeholder
+const FemininePlayer = ({ size = 'large' }) => {
+  const isLarge = size === 'large';
+  const viewBox = isLarge ? '0 0 80 100' : '0 0 60 75';
+  const headR = isLarge ? 12 : 9;
+  const headCy = isLarge ? 25 : 20;
+  
+  return (
+    <svg viewBox={viewBox} xmlns="http://www.w3.org/2000/svg" style={{width: '100%', height: '100%', display: 'flex'}}>
+      {/* Ponytail - pink arc */}
+      <defs>
+        <linearGradient id="ponytail" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style={{stopColor: '#FF6B9D', stopOpacity: 0.8}} />
+          <stop offset="100%" style={{stopColor: '#FF6B9D', stopOpacity: 0.4}} />
+        </linearGradient>
+      </defs>
+      
+      {/* Ponytail tail */}
+      <path d={isLarge ? "M 40 22 Q 48 40 47 70" : "M 30 18 Q 37 32 36 60"} stroke="url(#ponytail)" strokeWidth={isLarge ? 7 : 5} fill="none" strokeLinecap="round"/>
+      
+      {/* Head */}
+      <circle cx={isLarge ? 40 : 30} cy={headCy} r={headR} fill="rgba(100, 180, 200, 0.8)"/>
+      
+      {/* Ponytail bun */}
+      <ellipse cx={isLarge ? 42 : 31} cy={isLarge ? 10 : 8} rx={isLarge ? 7 : 5} ry={isLarge ? 9 : 7} fill="#FF6B9D" opacity="0.7"/>
+      
+      {/* Neck */}
+      <rect x={isLarge ? 37 : 28} y={isLarge ? 36 : 27} width={isLarge ? 6 : 4} height={isLarge ? 6 : 4} fill="rgba(100, 180, 200, 0.7)"/>
+      
+      {/* Torso - feminine curves */}
+      <path d={isLarge ? "M 30 42 Q 22 48 20 65 L 20 90 L 60 90 L 60 65 Q 58 48 50 42 Q 45 40 40 40 Q 35 40 30 42 Z" : "M 22 32 Q 15 38 13 55 L 13 70 L 47 70 L 47 55 Q 45 38 38 32 Q 34 30 30 30 Q 26 30 22 32 Z"} fill="rgba(0, 217, 255, 0.6)"/>
+      
+      {/* Hair side strands */}
+      <path d={isLarge ? "M 30 28 Q 22 32 20 40" : "M 22 22 Q 15 26 13 32"} stroke="rgba(255, 107, 157, 0.5)" strokeWidth={isLarge ? 3 : 2} fill="none" strokeLinecap="round" opacity="0.6"/>
+    </svg>
+  );
+};
+
 export default function App() {
   const [screen, setScreen] = useState('home');
   const [mode, setMode] = useState(null);
@@ -573,7 +612,7 @@ export default function App() {
                         if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex';
                       }}
                     />
-                    <div className="xi-photo-placeholder" style={{display: 'none'}}>👩</div>
+                    <div className="xi-photo-placeholder" style={{display: 'flex', alignItems: 'center', justifyContent: 'center'}}><FemininePlayer size="large" /></div>
                   </div>
                   <div className="xi-num">#{player?.squadNum}</div>
                   <div className="xi-name">{player?.firstName} {player?.surname}</div>
@@ -597,7 +636,7 @@ export default function App() {
                         if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex';
                       }}
                     />
-                    <div className="sub-photo-placeholder" style={{display: 'none'}}>👩</div>
+                    <div className="sub-photo-placeholder" style={{display: 'flex', alignItems: 'center', justifyContent: 'center'}}><FemininePlayer size="small" /></div>
                   </div>
                   <div className="sub-num">#{player?.squadNum}</div>
                   <div className="sub-name">{player?.firstName} {player?.surname}</div>
@@ -898,7 +937,7 @@ export default function App() {
                         if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex';
                       }}
                     />
-                    <div className="xi-photo-placeholder" style={{display: 'none'}}>👩</div>
+                    <div className="xi-photo-placeholder" style={{display: 'flex', alignItems: 'center', justifyContent: 'center'}}><FemininePlayer size="large" /></div>
                   </div>
                   <div className="xi-num">#{player.squadNum}</div>
                   <div className="xi-name">{player.firstName} {player.surname}</div>
@@ -922,7 +961,7 @@ export default function App() {
                         if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex';
                       }}
                     />
-                    <div className="sub-photo-placeholder" style={{display: 'none'}}>👩</div>
+                    <div className="sub-photo-placeholder" style={{display: 'flex', alignItems: 'center', justifyContent: 'center'}}><FemininePlayer size="small" /></div>
                   </div>
                   <div className="sub-num">#{player.squadNum}</div>
                   <div className="sub-name">{player.firstName} {player.surname}</div>
