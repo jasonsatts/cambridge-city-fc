@@ -161,6 +161,17 @@ export default function App() {
 
   // Generate shareable team sheet link
   const generateShareableLink = () => {
+    // Store current lineup to localStorage before generating link
+    const lineupData = {
+      startingXI,
+      subs,
+      gameDetails,
+      formation,
+      matchCode,
+      timestamp: new Date().toISOString()
+    };
+    localStorage.setItem('ccfc-lineup', JSON.stringify(lineupData));
+    
     const baseUrl = window.location.origin;
     return `${baseUrl}?teamSheet=${teamSheetId}`;
   };
@@ -490,8 +501,24 @@ export default function App() {
 
   // If someone is accessing via shared team sheet link, show read-only team sheet
   if (sharedTeamSheetId && screen === 'home') {
-    const selectedXI = startingXI.map(id => allPlayers.find(p => p.id === id));
-    const selectedSubs = subs.map(id => allPlayers.find(p => p.id === id));
+    // Try to load lineup data from localStorage
+    let lineupData = null;
+    try {
+      const stored = localStorage.getItem('ccfc-lineup');
+      if (stored) {
+        lineupData = JSON.parse(stored);
+      }
+    } catch (e) {
+      console.log('Could not load lineup data');
+    }
+
+    const xiIds = lineupData?.startingXI || startingXI;
+    const subIds = lineupData?.subs || subs;
+    const currentGameDetails = lineupData?.gameDetails || gameDetails;
+    const currentFormation = lineupData?.formation || formation;
+
+    const selectedXI = xiIds.map(id => allPlayers.find(p => p.id === id)).filter(Boolean);
+    const selectedSubs = subIds.map(id => allPlayers.find(p => p.id === id)).filter(Boolean);
 
     return (
       <div className="container team-sheet-container">
@@ -506,23 +533,23 @@ export default function App() {
           <div className="team-sheet-header">
             <div className="match-detail">
               <span className="detail-label">Opponent:</span>
-              <span className="detail-value">{gameDetails.opponent || '—'}</span>
+              <span className="detail-value">{currentGameDetails.opponent || '—'}</span>
             </div>
             <div className="match-detail">
               <span className="detail-label">Date:</span>
-              <span className="detail-value">{gameDetails.date || '—'}</span>
+              <span className="detail-value">{currentGameDetails.date || '—'}</span>
             </div>
             <div className="match-detail">
               <span className="detail-label">Kick-off:</span>
-              <span className="detail-value">{gameDetails.kickOffTime || '—'}</span>
+              <span className="detail-value">{currentGameDetails.kickOffTime || '—'}</span>
             </div>
             <div className="match-detail">
               <span className="detail-label">Location:</span>
-              <span className="detail-value">{gameDetails.location || '—'}</span>
+              <span className="detail-value">{currentGameDetails.location || '—'}</span>
             </div>
             <div className="match-detail">
               <span className="detail-label">Formation:</span>
-              <span className="detail-value">{formation}</span>
+              <span className="detail-value">{currentFormation}</span>
             </div>
           </div>
 
@@ -531,11 +558,11 @@ export default function App() {
             <h2>Starting XI</h2>
             <div className="xi-cards-grid">
               {selectedXI.map(player => (
-                <div key={player.id} className="xi-card">
+                <div key={player?.id} className="xi-card">
                   <div className="xi-photo">
                     <img 
-                      src={`/players/${player.firstName}_${player.surname}_2.jpg`}
-                      alt={`${player.firstName} ${player.surname}`}
+                      src={`/players/${player?.firstName}_${player?.surname}_2.jpg`}
+                      alt={`${player?.firstName} ${player?.surname}`}
                       onError={(e) => {
                         e.target.style.display = 'none';
                         if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex';
@@ -543,8 +570,8 @@ export default function App() {
                     />
                     <div className="xi-photo-placeholder" style={{display: 'none'}}>👤</div>
                   </div>
-                  <div className="xi-num">#{player.squadNum}</div>
-                  <div className="xi-name">{player.firstName} {player.surname}</div>
+                  <div className="xi-num">#{player?.squadNum}</div>
+                  <div className="xi-name">{player?.firstName} {player?.surname}</div>
                 </div>
               ))}
             </div>
@@ -555,9 +582,20 @@ export default function App() {
             <h2>Substitutes</h2>
             <div className="subs-grid">
               {selectedSubs.map(player => (
-                <div key={player.id} className="sub-card">
-                  <div className="sub-num">#{player.squadNum}</div>
-                  <div className="sub-name">{player.firstName} {player.surname}</div>
+                <div key={player?.id} className="sub-card">
+                  <div className="sub-photo">
+                    <img 
+                      src={`/players/${player?.firstName}_${player?.surname}_2.jpg`}
+                      alt={`${player?.firstName} ${player?.surname}`}
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex';
+                      }}
+                    />
+                    <div className="sub-photo-placeholder" style={{display: 'none'}}>👤</div>
+                  </div>
+                  <div className="sub-num">#{player?.squadNum}</div>
+                  <div className="sub-name">{player?.firstName} {player?.surname}</div>
                 </div>
               ))}
             </div>
@@ -870,6 +908,17 @@ export default function App() {
             <div className="subs-grid">
               {selectedSubs.map(player => (
                 <div key={player.id} className="sub-card">
+                  <div className="sub-photo">
+                    <img 
+                      src={`/players/${player.firstName}_${player.surname}_2.jpg`}
+                      alt={`${player.firstName} ${player.surname}`}
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        if (e.target.nextElementSibling) e.target.nextElementSibling.style.display = 'flex';
+                      }}
+                    />
+                    <div className="sub-photo-placeholder" style={{display: 'none'}}>👤</div>
+                  </div>
                   <div className="sub-num">#{player.squadNum}</div>
                   <div className="sub-name">{player.firstName} {player.surname}</div>
                 </div>
