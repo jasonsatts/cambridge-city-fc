@@ -188,18 +188,18 @@ export default function App() {
     const pitchPlayers = [];
     let playerIndex = 0;
     
-    // GK (bottom, defending)
+    // GK (bottom, defending y: 120)
     const gkPlayer = allPlayers.find(p => p.id === startingXI[playerIndex]);
     pitchPlayers.push({
       ...gkPlayer,
       position: 'GK',
       x: 40,
-      y: 20,
+      y: 120,
     });
     playerIndex++;
     
-    // DEF (back row)
-    const defY = 40;
+    // DEF (back row, y: 100)
+    const defY = 100;
     for (let i = 0; i < formConfig.def; i++) {
       const player = allPlayers.find(p => p.id === startingXI[playerIndex]);
       const defSpacing = formConfig.def > 1 ? 50 / (formConfig.def - 1) : 0;
@@ -212,8 +212,8 @@ export default function App() {
       playerIndex++;
     }
     
-    // MID (midfield row)
-    const midY = 75;
+    // MID (midfield row, y: 65)
+    const midY = 65;
     for (let i = 0; i < formConfig.mid; i++) {
       const player = allPlayers.find(p => p.id === startingXI[playerIndex]);
       const midSpacing = formConfig.mid > 1 ? 50 / (formConfig.mid - 1) : 0;
@@ -226,8 +226,8 @@ export default function App() {
       playerIndex++;
     }
     
-    // FWD (top, attacking)
-    const fwdY = 100;
+    // FWD (top, attacking y: 30)
+    const fwdY = 30;
     for (let i = 0; i < formConfig.fwd; i++) {
       const player = allPlayers.find(p => p.id === startingXI[playerIndex]);
       const fwdSpacing = formConfig.fwd > 1 ? 50 / (formConfig.fwd - 1) : 0;
@@ -539,20 +539,20 @@ export default function App() {
                 const pitchPlayers = [];
                 let playerIndex = 0;
                 
-                // GK (bottom, defending)
+                // GK (bottom, defending y: 120)
                 const gkPlayer = data.selectedXI[playerIndex];
                 if (gkPlayer) {
                   pitchPlayers.push({
                     ...gkPlayer,
                     position: 'GK',
                     x: 40,
-                    y: 20,
+                    y: 120,
                   });
                   playerIndex++;
                 }
                 
-                // DEF (back row)
-                const defY = 40;
+                // DEF (back row, y: 100)
+                const defY = 100;
                 for (let i = 0; i < formConfig.def; i++) {
                   const player = data.selectedXI[playerIndex];
                   if (player) {
@@ -567,8 +567,8 @@ export default function App() {
                   }
                 }
                 
-                // MID (midfield row)
-                const midY = 75;
+                // MID (midfield row, y: 65)
+                const midY = 65;
                 for (let i = 0; i < formConfig.mid; i++) {
                   const player = data.selectedXI[playerIndex];
                   if (player) {
@@ -583,8 +583,8 @@ export default function App() {
                   }
                 }
                 
-                // FW (top, attacking)
-                const fwY = 100;
+                // FW (top, attacking y: 30)
+                const fwY = 30;
                 for (let i = 0; i < formConfig.fw; i++) {
                   const player = data.selectedXI[playerIndex];
                   if (player) {
