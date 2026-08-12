@@ -3,7 +3,8 @@ import './App.css';
 
 // Google Sheet ID and configuration
 const SHEET_ID = '1HNU4KIb_84KTASKqwV32Jeo3Wcr4jJyV2px5hM9eC9s';
-const PLAYERS_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=0`;
+const PLAYERS_GID = '1456060265'; // Correct sheet ID for "Players" tab
+const PLAYERS_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${PLAYERS_GID}`;
 
 // Formation templates
 const FORMATIONS = {
@@ -43,21 +44,36 @@ export default function App() {
       setLoading(true);
       setError('');
       
+      console.log('Fetching from:', PLAYERS_CSV_URL);
+      
       // Fetch CSV from public Google Sheet
       const response = await fetch(PLAYERS_CSV_URL);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
       const csvText = await response.text();
+      console.log('CSV response length:', csvText.length);
       
       // Parse CSV
-      const rows = csvText.trim().split('\n');
+      const rows = csvText.trim().split('\n').filter(row => row.trim());
+      console.log('Total rows:', rows.length);
+      
       if (rows.length < 2) {
         setError('Sheet is empty or invalid');
         setLoading(false);
         return;
       }
 
+      // Log header row
+      console.log('Header row:', rows[0]);
+
       // Skip header row, parse player data
       const players = rows.slice(1).map((row, idx) => {
+        // Parse CSV row (handle commas in names)
         const cols = row.split(',').map(col => col.trim().replace(/^"|"$/g, ''));
+        
         return {
           id: idx + 1,
           playerId: cols[0] || idx + 1,
@@ -69,7 +85,7 @@ export default function App() {
         };
       }).filter(p => p.firstName || p.surname); // Filter out empty rows
 
-      console.log('Loaded players:', players);
+      console.log('Parsed players:', players);
       setAllPlayers(players);
 
       // Initialize stats
@@ -86,6 +102,7 @@ export default function App() {
         };
       });
       setStats(initialStats);
+      setError('');
     } catch (err) {
       console.error('Error fetching players:', err);
       setError(`Failed to load players: ${err.message}`);
