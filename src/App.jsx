@@ -159,9 +159,8 @@ export default function App() {
     }
   };
 
-  // Generate shareable team sheet link
+  // Generate shareable team sheet link (URL-encoded, not localStorage dependent)
   const generateShareableLink = () => {
-    // Store current lineup AND full player data to localStorage
     const selectedXIPlayers = startingXI.map(id => allPlayers.find(p => p.id === id)).filter(Boolean);
     const selectedSubsPlayers = subs.map(id => allPlayers.find(p => p.id === id)).filter(Boolean);
     
@@ -173,10 +172,11 @@ export default function App() {
       matchCode,
       timestamp: new Date().toISOString()
     };
-    localStorage.setItem('ccfc-lineup', JSON.stringify(lineupData));
     
+    // Encode lineup data into URL
+    const encoded = btoa(JSON.stringify(lineupData));
     const baseUrl = window.location.origin;
-    return `${baseUrl}?teamSheet=${teamSheetId}`;
+    return `${baseUrl}?lineup=${encoded}`;
   };
 
   // Get formation config
@@ -500,19 +500,17 @@ export default function App() {
 
   // ========== CHECK FOR SHARED TEAM SHEET URL ==========
   const params = new URLSearchParams(window.location.search);
-  const sharedTeamSheetId = params.get('teamSheet');
+  const encodedLineup = params.get('lineup');
 
   // If someone is accessing via shared team sheet link, show read-only team sheet
-  if (sharedTeamSheetId && screen === 'home') {
-    // Try to load lineup data from localStorage
+  if (encodedLineup && screen === 'home') {
+    // Decode lineup data from URL
     let lineupData = null;
     try {
-      const stored = localStorage.getItem('ccfc-lineup');
-      if (stored) {
-        lineupData = JSON.parse(stored);
-      }
+      const decoded = atob(encodedLineup);
+      lineupData = JSON.parse(decoded);
     } catch (e) {
-      console.log('Could not load lineup data');
+      console.log('Could not decode lineup data', e);
     }
 
     const selectedXI = lineupData?.startingXI || [];
