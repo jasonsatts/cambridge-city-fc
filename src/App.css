@@ -51,7 +51,7 @@ html, body, #root {
 /* ===== HOME SCREEN ===== */
 .home-container {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   min-height: 100vh;
   padding: 20px;
@@ -179,7 +179,7 @@ html, body, #root {
 /* ===== GENERAL CONTAINER ===== */
 .container {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   min-height: 100vh;
   padding: 20px;
@@ -381,7 +381,7 @@ html, body, #root {
 
 .selected-player {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   background: var(--bg-secondary);
   border: 1px solid rgba(0, 217, 255, 0.15);
@@ -485,7 +485,7 @@ html, body, #root {
 .match-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   background: var(--bg-secondary);
   padding: 16px 20px;
   border-bottom: 1px solid rgba(0, 217, 255, 0.1);
@@ -495,7 +495,7 @@ html, body, #root {
 .timer-display {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 4px;
 }
 
@@ -549,7 +549,7 @@ html, body, #root {
 .pitch-wrapper {
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 20px;
   overflow: auto;
@@ -655,7 +655,7 @@ html, body, #root {
 .events-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   padding: 20px;
   border-bottom: 1px solid rgba(0, 217, 255, 0.1);
   position: sticky;
@@ -675,7 +675,7 @@ html, body, #root {
 
 .event-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   padding: 12px 14px;
   background: var(--bg-tertiary);
@@ -779,7 +779,7 @@ html, body, #root {
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
 }
 
@@ -1180,7 +1180,7 @@ html, body, #root {
   gap: 15px;
   padding: 12px 16px;
   border-bottom: 1px solid rgba(0, 217, 255, 0.1);
-  align-items: center;
+  align-items: flex-start;
   transition: all 0.2s ease;
   font-size: 0.9rem;
 }
@@ -1376,7 +1376,7 @@ html, body, #root {
 
 .vote-bar-label {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   font-size: 0.9rem;
 }
@@ -1388,7 +1388,7 @@ html, body, #root {
   height: 32px;
   border-radius: 50%;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   font-weight: 700;
   flex-shrink: 0;
@@ -1412,7 +1412,7 @@ html, body, #root {
   height: 100%;
   background: linear-gradient(90deg, var(--primary) 0%, #00B8D4 100%);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: flex-end;
   padding-right: 10px;
   position: relative;
@@ -1788,7 +1788,7 @@ html, body, #root {
   transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
 }
 
@@ -1806,7 +1806,7 @@ html, body, #root {
   background: rgba(0, 217, 255, 0.1);
   border-radius: 10px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   border: 2px solid rgba(0, 217, 255, 0.3);
 }
@@ -1819,7 +1819,7 @@ html, body, #root {
   border-radius: 10px;
   background: rgba(0, 217, 255, 0.1);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
 }
 
@@ -1931,7 +1931,7 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
 }
 
@@ -1949,7 +1949,7 @@ html, body, #root {
   border-radius: 8px;
   background: rgba(0, 217, 255, 0.1);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
 }
 
@@ -1967,7 +1967,7 @@ html, body, #root {
   background: rgba(0, 217, 255, 0.1);
   border-radius: 8px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   border: 2px solid rgba(0, 217, 255, 0.3);
 }
