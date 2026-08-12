@@ -534,8 +534,8 @@ export default function App() {
               if (data.selectedXI && data.selectedXI.length > 0) {
                 // Parse formation from API
                 const formStr = data.formation || '1-4-4-2';
-                const [_, def, mid, fw] = formStr.match(/(\d)-(\d)-(\d)-(\d)/) || [null, 1, 4, 4, 2];
-                const formConfig = { def: parseInt(def), mid: parseInt(mid), fw: parseInt(fw) };
+                const [_, def, mid, fwd] = formStr.match(/(\d)-(\d)-(\d)-(\d)/) || [null, 1, 4, 4, 2];
+                const formConfig = { def: parseInt(def), mid: parseInt(mid), fwd: parseInt(fwd) };
                 const pitchPlayers = [];
                 let playerIndex = 0;
                 
