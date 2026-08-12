@@ -584,10 +584,10 @@ export default function App() {
                 
                 // FW (top, attacking y: 30)
                 const fwY = 30;
-                for (let i = 0; i < formConfig.fw; i++) {
+                for (let i = 0; i < formConfig.fwd; i++) {
                   const player = data.selectedXI[playerIndex];
                   if (player) {
-                    const fwSpacing = formConfig.fw > 1 ? 50 / (formConfig.fw - 1) : 0;
+                    const fwSpacing = formConfig.fwd > 1 ? 50 / (formConfig.fwd - 1) : 0;
                     pitchPlayers.push({
                       ...player,
                       position: 'FW',
