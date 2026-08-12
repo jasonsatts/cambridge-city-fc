@@ -41,6 +41,7 @@ body {
   color: var(--text-primary);
   line-height: 1.6;
   overflow-x: hidden;
+  overflow-y: auto;
 }
 
 html, body {
@@ -184,7 +185,6 @@ html, body {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  min-height: auto;
   padding: 20px;
   background: linear-gradient(135deg, var(--bg-primary) 0%, #1a2332 100%);
 }
