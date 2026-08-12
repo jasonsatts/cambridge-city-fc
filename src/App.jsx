@@ -709,32 +709,39 @@ export default function App() {
 
   // ========== TEAM SHEET PREVIEW (NEW - SHAREABLE) ==========
   if (screen === 'team-sheet-preview' && mode === 'coach') {
-    const pitchPlayers = buildPitchPlayers();
+    const selectedXI = startingXI.map(id => allPlayers.find(p => p.id === id));
     const selectedSubs = subs.map(id => allPlayers.find(p => p.id === id));
     const shareableUrl = generateShareableLink();
 
     return (
       <div className="container team-sheet-container">
         <div className="team-sheet-screen">
-          <h1>📋 Team Sheet Preview</h1>
-          
+          <h1>📋 Team Sheet</h1>
+
+          {/* Match Code Box - Prominent */}
+          <div className="match-code-box">
+            <p className="code-label">Match Code for Parents:</p>
+            <div className="code-display">{matchCode || 'CCFC-XXXXXX'}</div>
+            <p className="code-hint">Parents use this to join</p>
+          </div>
+
           {/* Match Details */}
           <div className="team-sheet-header">
             <div className="match-detail">
               <span className="detail-label">Opponent:</span>
-              <span className="detail-value">{gameDetails.opponent}</span>
+              <span className="detail-value">{gameDetails.opponent || '—'}</span>
             </div>
             <div className="match-detail">
               <span className="detail-label">Date:</span>
-              <span className="detail-value">{gameDetails.date}</span>
+              <span className="detail-value">{gameDetails.date || '—'}</span>
             </div>
             <div className="match-detail">
-              <span className="detail-label">Time:</span>
-              <span className="detail-value">{gameDetails.kickOffTime}</span>
+              <span className="detail-label">Kick-off:</span>
+              <span className="detail-value">{gameDetails.kickOffTime || '—'}</span>
             </div>
             <div className="match-detail">
               <span className="detail-label">Location:</span>
-              <span className="detail-value">{gameDetails.location}</span>
+              <span className="detail-value">{gameDetails.location || '—'}</span>
             </div>
             <div className="match-detail">
               <span className="detail-label">Formation:</span>
@@ -742,34 +749,17 @@ export default function App() {
             </div>
           </div>
 
-          {/* Formation Pitch Display */}
-          <div className="team-sheet-pitch-section">
+          {/* Starting XI Cards */}
+          <div className="starting-xi-section">
             <h2>Starting XI</h2>
-            <div className="pitch-wrapper-large">
-              <svg viewBox="0 0 80 130" className="pitch-large">
-                <rect width="80" height="130" fill="#2d5016" />
-                <line x1="0" y1="0" x2="80" y2="0" stroke="white" strokeWidth="0.5" />
-                <line x1="0" y1="130" x2="80" y2="130" stroke="white" strokeWidth="0.5" />
-                <line x1="0" y1="0" x2="0" y2="130" stroke="white" strokeWidth="0.5" />
-                <line x1="80" y1="0" x2="80" y2="130" stroke="white" strokeWidth="0.5" />
-                <line x1="0" y1="65" x2="80" y2="65" stroke="white" strokeWidth="0.4" />
-                <circle cx="40" cy="65" r="10" stroke="white" strokeWidth="0.3" fill="none" />
-                <circle cx="40" cy="65" r="0.8" fill="white" />
-                <rect x="15" y="0" width="50" height="18" stroke="white" strokeWidth="0.3" fill="none" />
-                <rect x="15" y="112" width="50" height="18" stroke="white" strokeWidth="0.3" fill="none" />
-
-                {pitchPlayers.map((player) => (
-                  <g key={player.id}>
-                    <circle cx={player.x} cy={player.y} r="5" fill="#FF6B6B" stroke="white" strokeWidth="0.8" />
-                    <text x={player.x} y={player.y - 2} textAnchor="middle" fill="white" fontSize="2.5" fontWeight="bold" style={{ pointerEvents: 'none' }}>
-                      {player.squadNum}
-                    </text>
-                    <text x={player.x} y={player.y + 3} textAnchor="middle" fill="white" fontSize="1.4" style={{ pointerEvents: 'none' }}>
-                      {player.firstName}
-                    </text>
-                  </g>
-                ))}
-              </svg>
+            <div className="xi-cards-grid">
+              {selectedXI.map(player => (
+                <div key={player.id} className="xi-card">
+                  <div className="xi-photo-placeholder">👤</div>
+                  <div className="xi-num">#{player.squadNum}</div>
+                  <div className="xi-name">{player.firstName} {player.surname}</div>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -789,7 +779,7 @@ export default function App() {
           {/* Share Options */}
           <div className="share-section">
             <h2>📤 Share Team Sheet</h2>
-            <p className="share-subtitle">Send to parents before the match</p>
+            <p className="share-subtitle">Send link to parents before the match</p>
             
             <div className="share-link-box">
               <input 
