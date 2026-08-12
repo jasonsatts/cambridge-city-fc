@@ -10,6 +10,9 @@ const FORMATIONS = {
   '1-3-5-2': { def: 3, mid: 5, fwd: 2 },
 };
 
+// Shareable team sheet ID generator
+const generateTeamSheetId = () => 'TS-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+
 export default function App() {
   const [screen, setScreen] = useState('home');
   const [mode, setMode] = useState(null);
@@ -31,6 +34,10 @@ export default function App() {
   const [startingXI, setStartingXI] = useState([]);
   const [subs, setSubs] = useState([]);
   const [formation, setFormation] = useState('1-4-4-2');
+  const [teamSheetId, setTeamSheetId] = useState(''); // Unique shareable link
+  const [statsPerson, setStatsPerson] = useState(null); // Who tracks the match
+  const [teamPublished, setTeamPublished] = useState(false); // Coach published team
+  
   const [matchStarted, setMatchStarted] = useState(false);
   const [players, setPlayers] = useState([]);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
@@ -46,15 +53,14 @@ export default function App() {
   const [matchEnded, setMatchEnded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [showAnnouncement, setShowAnnouncement] = useState(false);
   
   // ⏱️ TIME-ON-PITCH TRACKING
-  const [playerTimes, setPlayerTimes] = useState({}); // {playerId: [{onTime, offTime, half}]}
-  const [currentlyOnPitch, setCurrentlyOnPitch] = useState(new Set()); // Set of player IDs currently on pitch
+  const [playerTimes, setPlayerTimes] = useState({});
+  const [currentlyOnPitch, setCurrentlyOnPitch] = useState(new Set());
   
   // 👑 MOTM VOTING
-  const [motmVotes, setMotmVotes] = useState({}); // {playerId: voteCount}
-  const [userMotmVote, setUserMotmVote] = useState(null); // Track if parent has voted
+  const [motmVotes, setMotmVotes] = useState({});
+  const [userMotmVote, setUserMotmVote] = useState(null);
 
   // Timer interval
   useEffect(() => {
@@ -99,7 +105,7 @@ export default function App() {
           yellow: 0, 
           red: 0, 
           motm: 0,
-          minutesPlayed: 0 // ⏱️ NEW
+          minutesPlayed: 0
         };
       });
       setStats(initialStats);
@@ -146,85 +152,104 @@ export default function App() {
 
   const handleFormationSelect = () => {
     if (formation) {
-      const formConfig = FORMATIONS[formation];
-      const pitchPlayers = [];
-      const onPitch = new Set();
-      const times = {};
-      
-      let playerIndex = 0;
-      
-      // GK
-      const gkPlayer = allPlayers.find(p => p.id === startingXI[playerIndex]);
-      pitchPlayers.push({
-        ...gkPlayer,
-        position: 'GK',
-        x: 40,
-        y: 120,
-      });
-      onPitch.add(gkPlayer.id);
-      times[gkPlayer.id] = [{ onTime: 0, offTime: null, half: 1 }];
-      playerIndex++;
-      
-      // DEF
-      const defY = 100;
-      for (let i = 0; i < formConfig.def; i++) {
-        const player = allPlayers.find(p => p.id === startingXI[playerIndex]);
-        const defSpacing = formConfig.def > 1 ? 50 / (formConfig.def - 1) : 0;
-        pitchPlayers.push({
-          ...player,
-          position: 'DEF',
-          x: 15 + i * defSpacing,
-          y: defY,
-        });
-        onPitch.add(player.id);
-        times[player.id] = [{ onTime: 0, offTime: null, half: 1 }];
-        playerIndex++;
-      }
-      
-      // MID
-      const midY = 65;
-      for (let i = 0; i < formConfig.mid; i++) {
-        const player = allPlayers.find(p => p.id === startingXI[playerIndex]);
-        const midSpacing = formConfig.mid > 1 ? 50 / (formConfig.mid - 1) : 0;
-        pitchPlayers.push({
-          ...player,
-          position: 'MID',
-          x: 15 + i * midSpacing,
-          y: midY,
-        });
-        onPitch.add(player.id);
-        times[player.id] = [{ onTime: 0, offTime: null, half: 1 }];
-        playerIndex++;
-      }
-      
-      // FWD
-      const fwdY = 30;
-      for (let i = 0; i < formConfig.fwd; i++) {
-        const player = allPlayers.find(p => p.id === startingXI[playerIndex]);
-        const fwdSpacing = formConfig.fwd > 1 ? 50 / (formConfig.fwd - 1) : 0;
-        pitchPlayers.push({
-          ...player,
-          position: 'FWD',
-          x: 15 + i * fwdSpacing,
-          y: fwdY,
-        });
-        onPitch.add(player.id);
-        times[player.id] = [{ onTime: 0, offTime: null, half: 1 }];
-        playerIndex++;
-      }
-      
-      // Initialize all subs (not on pitch yet)
-      subs.forEach(subID => {
-        times[subID] = [];
-      });
-      
-      setPlayers(pitchPlayers);
-      setCurrentlyOnPitch(onPitch);
-      setPlayerTimes(times);
-      setMatchStarted(true);
-      setScreen('match');
-      setTimerRunning(true);
+      // Go to team sheet preview instead of straight to match
+      setTeamSheetId(generateTeamSheetId());
+      setScreen('team-sheet-preview');
     }
+  };
+
+  // Generate shareable team sheet link
+  const generateShareableLink = () => {
+    const baseUrl = window.location.origin;
+    return `${baseUrl}?teamSheet=${teamSheetId}`;
+  };
+
+  // Get formation config
+  const getFormationConfig = () => FORMATIONS[formation];
+
+  // Build pitch players for display
+  const buildPitchPlayers = () => {
+    const formConfig = getFormationConfig();
+    const pitchPlayers = [];
+    let playerIndex = 0;
+    
+    // GK
+    const gkPlayer = allPlayers.find(p => p.id === startingXI[playerIndex]);
+    pitchPlayers.push({
+      ...gkPlayer,
+      position: 'GK',
+      x: 40,
+      y: 120,
+    });
+    playerIndex++;
+    
+    // DEF
+    const defY = 100;
+    for (let i = 0; i < formConfig.def; i++) {
+      const player = allPlayers.find(p => p.id === startingXI[playerIndex]);
+      const defSpacing = formConfig.def > 1 ? 50 / (formConfig.def - 1) : 0;
+      pitchPlayers.push({
+        ...player,
+        position: 'DEF',
+        x: 15 + i * defSpacing,
+        y: defY,
+      });
+      playerIndex++;
+    }
+    
+    // MID
+    const midY = 65;
+    for (let i = 0; i < formConfig.mid; i++) {
+      const player = allPlayers.find(p => p.id === startingXI[playerIndex]);
+      const midSpacing = formConfig.mid > 1 ? 50 / (formConfig.mid - 1) : 0;
+      pitchPlayers.push({
+        ...player,
+        position: 'MID',
+        x: 15 + i * midSpacing,
+        y: midY,
+      });
+      playerIndex++;
+    }
+    
+    // FWD
+    const fwdY = 30;
+    for (let i = 0; i < formConfig.fwd; i++) {
+      const player = allPlayers.find(p => p.id === startingXI[playerIndex]);
+      const fwdSpacing = formConfig.fwd > 1 ? 50 / (formConfig.fwd - 1) : 0;
+      pitchPlayers.push({
+        ...player,
+        position: 'FWD',
+        x: 15 + i * fwdSpacing,
+        y: fwdY,
+      });
+      playerIndex++;
+    }
+    
+    return pitchPlayers;
+  };
+
+  // Continue to match start (after team sheet published)
+  const handleContinueToMatch = () => {
+    const pitchPlayers = buildPitchPlayers();
+    const onPitch = new Set();
+    const times = {};
+    
+    // Initialize time tracking for starting XI
+    startingXI.forEach(id => {
+      onPitch.add(id);
+      times[id] = [{ onTime: 0, offTime: null, half: 1 }];
+    });
+    
+    // Initialize subs (not on pitch yet)
+    subs.forEach(subID => {
+      times[subID] = [];
+    });
+    
+    setPlayers(pitchPlayers);
+    setCurrentlyOnPitch(onPitch);
+    setPlayerTimes(times);
+    setMatchStarted(true);
+    setScreen('select-stats-person');
   };
 
   const handlePlayerMouseDown = (e, player) => {
@@ -288,13 +313,12 @@ export default function App() {
     setTimerRunning(false);
     setMatchEnded(true);
     
-    // ⏱️ Calculate final minutes for all players still on pitch
+    // Calculate final minutes
     const finalStats = { ...stats };
     currentlyOnPitch.forEach(playerId => {
       if (playerTimes[playerId] && playerTimes[playerId].length > 0) {
         const lastSession = playerTimes[playerId][playerTimes[playerId].length - 1];
         if (lastSession.offTime === null) {
-          // Player is still on pitch at full time
           const minutes = Math.floor(matchTime / 60);
           finalStats[playerId].minutesPlayed = minutes;
         }
@@ -352,21 +376,17 @@ export default function App() {
     setShowActionModal(false);
   };
 
-  // ⏱️ NEW: Handle substitution (player coming OFF)
   const handleSubstitution = (subPlayerID) => {
     const subPlayer = allPlayers.find(p => p.id === subPlayerID);
     const playerComingOff = selectedPlayer;
     
-    // Record the "Sub Off" event
     recordEvent('Sub Off');
     
-    // ⏱️ Mark the time the player came off
     const times = { ...playerTimes };
     if (times[playerComingOff.id] && times[playerComingOff.id].length > 0) {
       const lastSession = times[playerComingOff.id][times[playerComingOff.id].length - 1];
       if (lastSession.offTime === null) {
         lastSession.offTime = matchTime;
-        // Calculate minutes for this session
         const mins = Math.floor((matchTime - lastSession.onTime) / 60);
         
         const updatedStats = { ...stats };
@@ -376,13 +396,11 @@ export default function App() {
       }
     }
     
-    // ⏱️ Mark the time the sub came on
     if (!times[subPlayerID]) {
       times[subPlayerID] = [];
     }
     times[subPlayerID].push({ onTime: matchTime, offTime: null, half: half });
     
-    // Update current on pitch
     const newOnPitch = new Set(currentlyOnPitch);
     newOnPitch.delete(playerComingOff.id);
     newOnPitch.add(subPlayerID);
@@ -390,21 +408,18 @@ export default function App() {
     setPlayerTimes(times);
     setCurrentlyOnPitch(newOnPitch);
     
-    // Update pitch players
     const subPosition = playerComingOff.position;
     const updatedPlayers = players.map(p =>
       p.id === playerComingOff.id ? { ...subPlayer, position: subPosition, x: p.x, y: p.y } : p
     );
     setPlayers(updatedPlayers);
     
-    // Record "Sub On" event
     recordEvent('Sub On');
     
     setSelectedPlayer(null);
     setShowActionModal(false);
   };
 
-  // 👑 Handle MOTM vote from parents
   const handleMotmVote = (playerId) => {
     setUserMotmVote(playerId);
     setMotmVotes(prev => ({
@@ -420,6 +435,20 @@ export default function App() {
     );
   };
 
+  const getCurrentMinutes = (playerId) => {
+    if (!playerTimes[playerId]) return 0;
+    let total = stats[playerId]?.minutesPlayed || 0;
+    const sessions = playerTimes[playerId];
+    if (sessions.length > 0) {
+      const lastSession = sessions[sessions.length - 1];
+      if (lastSession.offTime === null) {
+        const currentSessionMins = Math.floor((matchTime - lastSession.onTime) / 60);
+        total += currentSessionMins;
+      }
+    }
+    return total;
+  };
+
   const handleSaveToSheet = async () => {
     setSaving(true);
     try {
@@ -431,8 +460,8 @@ export default function App() {
         goals: events.filter(e => e.event === 'Goal').length,
         events: events,
         playerStats: stats,
-        playerTimes: playerTimes, // ⏱️ Include time tracking
-        motmVotes: motmVotes, // 👑 Include MOTM votes
+        playerTimes: playerTimes,
+        motmVotes: motmVotes,
         startingXI: startingXI.map(id => allPlayers.find(p => p.id === id)),
       };
 
@@ -454,22 +483,6 @@ export default function App() {
     }
   };
 
-  // Calculate current minutes for a player
-  const getCurrentMinutes = (playerId) => {
-    if (!playerTimes[playerId]) return 0;
-    let total = stats[playerId]?.minutesPlayed || 0;
-    const sessions = playerTimes[playerId];
-    if (sessions.length > 0) {
-      const lastSession = sessions[sessions.length - 1];
-      if (lastSession.offTime === null) {
-        // Still on pitch
-        const currentSessionMins = Math.floor((matchTime - lastSession.onTime) / 60);
-        total += currentSessionMins;
-      }
-    }
-    return total;
-  };
-
   // ========== HOME SCREEN ==========
   if (screen === 'home') {
     return (
@@ -481,7 +494,7 @@ export default function App() {
           <div className="access-grid">
             <div className="access-card coach-card">
               <h2>🏆 Coach</h2>
-              <p>Manage lineups & track stats</p>
+              <p>Setup & manage match</p>
               <div className="pin-input-wrapper">
                 <input
                   type="text"
@@ -505,7 +518,7 @@ export default function App() {
 
             <div className="access-card parent-card">
               <h2>👥 Parents</h2>
-              <p>Watch live match</p>
+              <p>Join live match</p>
               <form onSubmit={handleParentCodeSubmit} className="code-input-wrapper">
                 <input
                   type="text"
@@ -525,6 +538,8 @@ export default function App() {
     );
   }
 
+  return null;
+}
   // ========== COACH SETUP ==========
   if (screen === 'coach-setup' && mode === 'coach') {
     return (
@@ -576,43 +591,12 @@ export default function App() {
             </div>
           </div>
 
-          <div className="match-code-display">
-            <p className="code-label">Match Code:</p>
-            <p className="code-value">{matchCode}</p>
-            <p className="code-hint">Share this with parents</p>
-          </div>
-
-          <div className="form-section">
-            <button 
-              className="btn-primary"
-              onClick={() => setShowAnnouncement(true)}
-            >
-              📢 Preview Announcement
-            </button>
-            <button 
-              className="btn-secondary"
-              onClick={() => setScreen('lineup')}
-            >
-              Continue → Select Team
-            </button>
-          </div>
-
-          {showAnnouncement && (
-            <div className="modal-overlay" onClick={() => setShowAnnouncement(false)}>
-              <div className="announcement-modal" onClick={e => e.stopPropagation()}>
-                <h2>Match Announcement</h2>
-                <div className="announcement-content">
-                  <p><strong>Team:</strong> Cambridge City FC U15s Girls</p>
-                  <p><strong>Opponent:</strong> {gameDetails.opponent || '[To be confirmed]'}</p>
-                  <p><strong>Date:</strong> {gameDetails.date || '[To be confirmed]'}</p>
-                  <p><strong>Kick-off:</strong> {gameDetails.kickOffTime || '[To be confirmed]'}</p>
-                  <p><strong>Location:</strong> {gameDetails.location || '[To be confirmed]'}</p>
-                  <p className="announcement-footer">See you there! ⚽</p>
-                </div>
-                <button className="btn-close" onClick={() => setShowAnnouncement(false)}>Close</button>
-              </div>
-            </div>
-          )}
+          <button 
+            className="btn-primary"
+            onClick={() => setScreen('lineup')}
+          >
+            Continue → Select Team
+          </button>
         </div>
       </div>
     );
@@ -692,7 +676,7 @@ export default function App() {
             onClick={handleSelectStartingXI}
             disabled={startingXI.length !== 11 || subs.length === 0}
           >
-            Continue → Select Formation ({startingXI.length}/11, {subs.length} subs)
+            Continue → Select Formation ({startingXI.length}/11)
           </button>
         </div>
       </div>
@@ -717,14 +701,216 @@ export default function App() {
             ))}
           </div>
           <button className="btn-primary" onClick={handleFormationSelect}>
-            Start Match ⚽
+            Preview Team Sheet →
           </button>
         </div>
       </div>
     );
   }
 
-  // ========== MATCH SCREEN ==========
+  // ========== TEAM SHEET PREVIEW (NEW - SHAREABLE) ==========
+  if (screen === 'team-sheet-preview' && mode === 'coach') {
+    const pitchPlayers = buildPitchPlayers();
+    const selectedSubs = subs.map(id => allPlayers.find(p => p.id === id));
+    const shareableUrl = generateShareableLink();
+
+    return (
+      <div className="container team-sheet-container">
+        <div className="team-sheet-screen">
+          <h1>📋 Team Sheet Preview</h1>
+          
+          {/* Match Details */}
+          <div className="team-sheet-header">
+            <div className="match-detail">
+              <span className="detail-label">Opponent:</span>
+              <span className="detail-value">{gameDetails.opponent}</span>
+            </div>
+            <div className="match-detail">
+              <span className="detail-label">Date:</span>
+              <span className="detail-value">{gameDetails.date}</span>
+            </div>
+            <div className="match-detail">
+              <span className="detail-label">Time:</span>
+              <span className="detail-value">{gameDetails.kickOffTime}</span>
+            </div>
+            <div className="match-detail">
+              <span className="detail-label">Location:</span>
+              <span className="detail-value">{gameDetails.location}</span>
+            </div>
+            <div className="match-detail">
+              <span className="detail-label">Formation:</span>
+              <span className="detail-value">{formation}</span>
+            </div>
+          </div>
+
+          {/* Formation Pitch Display */}
+          <div className="team-sheet-pitch-section">
+            <h2>Starting XI</h2>
+            <div className="pitch-wrapper-large">
+              <svg viewBox="0 0 80 130" className="pitch-large">
+                <rect width="80" height="130" fill="#2d5016" />
+                <line x1="0" y1="0" x2="80" y2="0" stroke="white" strokeWidth="0.5" />
+                <line x1="0" y1="130" x2="80" y2="130" stroke="white" strokeWidth="0.5" />
+                <line x1="0" y1="0" x2="0" y2="130" stroke="white" strokeWidth="0.5" />
+                <line x1="80" y1="0" x2="80" y2="130" stroke="white" strokeWidth="0.5" />
+                <line x1="0" y1="65" x2="80" y2="65" stroke="white" strokeWidth="0.4" />
+                <circle cx="40" cy="65" r="10" stroke="white" strokeWidth="0.3" fill="none" />
+                <circle cx="40" cy="65" r="0.8" fill="white" />
+                <rect x="15" y="0" width="50" height="18" stroke="white" strokeWidth="0.3" fill="none" />
+                <rect x="15" y="112" width="50" height="18" stroke="white" strokeWidth="0.3" fill="none" />
+
+                {pitchPlayers.map((player) => (
+                  <g key={player.id}>
+                    <circle cx={player.x} cy={player.y} r="5" fill="#FF6B6B" stroke="white" strokeWidth="0.8" />
+                    <text x={player.x} y={player.y - 2} textAnchor="middle" fill="white" fontSize="2.5" fontWeight="bold" style={{ pointerEvents: 'none' }}>
+                      {player.squadNum}
+                    </text>
+                    <text x={player.x} y={player.y + 3} textAnchor="middle" fill="white" fontSize="1.4" style={{ pointerEvents: 'none' }}>
+                      {player.firstName}
+                    </text>
+                  </g>
+                ))}
+              </svg>
+            </div>
+          </div>
+
+          {/* Substitutes */}
+          <div className="team-sheet-subs-section">
+            <h2>Substitutes</h2>
+            <div className="subs-grid">
+              {selectedSubs.map(player => (
+                <div key={player.id} className="sub-card">
+                  <div className="sub-num">#{player.squadNum}</div>
+                  <div className="sub-name">{player.firstName} {player.surname}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Share Options */}
+          <div className="share-section">
+            <h2>📤 Share Team Sheet</h2>
+            <p className="share-subtitle">Send to parents before the match</p>
+            
+            <div className="share-link-box">
+              <input 
+                type="text" 
+                value={shareableUrl} 
+                readOnly 
+                className="share-link-input"
+              />
+              <button 
+                className="btn-copy"
+                onClick={() => {
+                  navigator.clipboard.writeText(shareableUrl);
+                  alert('Link copied to clipboard!');
+                }}
+              >
+                📋 Copy Link
+              </button>
+            </div>
+
+            <div className="share-buttons">
+              <button 
+                className="btn-share"
+                onClick={() => {
+                  if (navigator.share) {
+                    navigator.share({
+                      title: `${gameDetails.opponent} - Team Sheet`,
+                      text: `View the team selection for Cambridge City FC`,
+                      url: shareableUrl
+                    });
+                  } else {
+                    alert('Share not supported on this device');
+                  }
+                }}
+              >
+                🔗 Share Link
+              </button>
+              <button 
+                className="btn-share"
+                onClick={() => window.print()}
+              >
+                🖨️ Print / PDF
+              </button>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="team-sheet-actions">
+            <button 
+              className="btn-primary"
+              onClick={handleContinueToMatch}
+            >
+              ✅ Team Confirmed → Start Match
+            </button>
+            <button 
+              className="btn-secondary"
+              onClick={() => setScreen('formation')}
+            >
+              ← Change Formation
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+  // ========== SELECT STATS PERSON (BEFORE MATCH) ==========
+  if (screen === 'select-stats-person' && mode === 'coach' && matchStarted && !timerRunning) {
+    return (
+      <div className="container">
+        <div className="stats-person-screen">
+          <h1>👤 Designate Stats Person</h1>
+          <p className="stats-subtitle">Who will track the match today?</p>
+          
+          <div className="stats-options">
+            <div className="option-group">
+              <h2>📱 Live Match Tracker</h2>
+              <p>Person who records goals, assists, cards, subs</p>
+              <select 
+                className="stats-select"
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setStatsPerson(parseInt(e.target.value));
+                  }
+                }}
+              >
+                <option value="">Select a person...</option>
+                <option value="0">Coach (Me)</option>
+                {selectedSubs.map(player => (
+                  <option key={player.id} value={player.id}>
+                    {player.firstName} {player.surname} (Parent)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="option-group info-box">
+              <p><strong>👤 Coach:</strong> Always has access</p>
+              <p><strong>📊 Stats Person:</strong> One designated parent/assistant to track events</p>
+              <p><strong>👥 Other Parents:</strong> View team sheet before match, MOTM voting after</p>
+            </div>
+          </div>
+
+          <button 
+            className="btn-primary"
+            onClick={() => {
+              setScreen('match');
+              setTimerRunning(true);
+            }}
+            disabled={!statsPerson && statsPerson !== 0}
+          >
+            🏁 Start Match
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ========== MATCH SCREEN (COACH ONLY) ==========
   if (screen === 'match' && matchStarted && mode === 'coach') {
     const displayTime = half === 1 ? matchTime : matchTime - (45 * 60);
     
@@ -737,7 +923,6 @@ export default function App() {
         onTouchMove={handleMouseMove}
         onTouchEnd={handleMouseUp}
       >
-        {/* Match Header */}
         <div className="match-header">
           <div className="timer-display">
             <div className="time">{formatTime(displayTime)}</div>
@@ -769,7 +954,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Half Time Banner */}
         {!timerRunning && half === 1 && matchTime > 0 && (
           <div className="half-time-banner">
             <h2>⏸ HALF TIME</h2>
@@ -779,7 +963,6 @@ export default function App() {
           </div>
         )}
 
-        {/* Pitch */}
         <div className="pitch-wrapper">
           <svg viewBox="0 0 80 130" className="pitch" style={{ cursor: draggedPlayer ? 'grabbing' : 'grab' }}>
             <rect width="80" height="130" fill="#2d5016" />
@@ -792,10 +975,6 @@ export default function App() {
             <circle cx="40" cy="65" r="0.8" fill="white" />
             <rect x="15" y="0" width="50" height="18" stroke="white" strokeWidth="0.3" fill="none" />
             <rect x="15" y="112" width="50" height="18" stroke="white" strokeWidth="0.3" fill="none" />
-            <rect x="25" y="0" width="30" height="8" stroke="white" strokeWidth="0.25" fill="none" />
-            <rect x="25" y="122" width="30" height="8" stroke="white" strokeWidth="0.25" fill="none" />
-            <circle cx="40" cy="3" r="0.5" fill="white" />
-            <circle cx="40" cy="127" r="0.5" fill="white" />
 
             {players.map((player) => (
               <g 
@@ -816,14 +995,12 @@ export default function App() {
           </svg>
         </div>
 
-        {/* Controls */}
         <div className="match-controls">
           <button className="btn-control" onClick={() => setShowEventsLog(!showEventsLog)}>
             📋 Events ({events.length})
           </button>
         </div>
 
-        {/* Events Log */}
         {showEventsLog && (
           <div className="events-sheet">
             <div className="events-header">
@@ -842,7 +1019,6 @@ export default function App() {
           </div>
         )}
 
-        {/* Action Modal */}
         {showActionModal && selectedPlayer && (
           <div className="modal-overlay" onClick={() => setShowActionModal(false)}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
@@ -867,7 +1043,6 @@ export default function App() {
                   <option value="">Select...</option>
                   {subs.map(subID => {
                     const subPlayer = allPlayers.find(p => p.id === subID);
-                    // Only show subs not currently on pitch
                     if (!currentlyOnPitch.has(subID)) {
                       return (
                         <option key={subID} value={subID}>
@@ -894,7 +1069,7 @@ export default function App() {
     const motmLeader = getMotmLeader();
     const motmLeaderPlayer = motmLeader ? allPlayers.find(p => p.id === parseInt(motmLeader)) : null;
     
-    // ========== MOTM VOTING (After Full-Time) ==========
+    // MOTM VOTING (After Full-Time)
     if (matchEnded) {
       return (
         <div className="container">
@@ -977,7 +1152,7 @@ export default function App() {
       );
     }
     
-    // ========== LIVE MATCH WATCH ==========
+    // LIVE MATCH WATCH
     return (
       <div className="container">
         <div className="parent-watch-screen">
@@ -995,7 +1170,6 @@ export default function App() {
                 <div className="half-display">Half {half}</div>
               </div>
 
-              {/* ⏱️ Current XI with minutes */}
               <div className="current-xi-section">
                 <h3>On Pitch</h3>
                 <div className="players-grid">
@@ -1038,7 +1212,6 @@ export default function App() {
     const assists = events.filter(e => e.event === 'Assist').length;
     const cards = events.filter(e => e.event === 'Yellow' || e.event === 'Red').length;
 
-    // Get all players with their minutes
     const playersWithMinutes = startingXI.map(id => allPlayers.find(p => p.id === id))
       .concat(subs.map(id => allPlayers.find(p => p.id === id)))
       .map(p => ({
@@ -1071,7 +1244,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* ⏱️ Minutes Played Table */}
           <div className="summary-section">
             <h2>Player Minutes</h2>
             <div className="minutes-table">
@@ -1111,7 +1283,7 @@ export default function App() {
               onClick={handleSaveToSheet}
               disabled={saving}
             >
-              {saving ? '💾 Saving...' : '💾 Save'}
+              {saving ? '💾 Saving...' : '💾 Save to Sheets'}
             </button>
             <button 
               className="btn-secondary"
