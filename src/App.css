@@ -1072,3 +1072,142 @@ html, body, #root {
     grid-template-columns: 1fr;
   }
 }
+
+/* ===== TIME-ON-PITCH TRACKING ===== */
+.player-time {
+  font-size: 0.9rem;
+  color: var(--primary);
+  font-weight: 700;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.current-xi-section {
+  background: var(--bg-secondary);
+  border: 1px solid rgba(0, 217, 255, 0.1);
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-md);
+}
+
+.current-xi-section h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.players-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+  gap: 10px;
+}
+
+.player-badge {
+  background: var(--bg-tertiary);
+  border: 2px solid rgba(0, 217, 255, 0.3);
+  border-radius: 10px;
+  padding: 10px 8px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.player-badge:hover {
+  border-color: var(--primary);
+  background: var(--bg-secondary);
+  transform: translateY(-2px);
+}
+
+.badge-num {
+  font-weight: 800;
+  color: var(--primary);
+  font-size: 1.1rem;
+  margin-bottom: 4px;
+}
+
+.badge-name {
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  font-weight: 700;
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.badge-time {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+/* ===== MINUTES TABLE ===== */
+.minutes-table {
+  background: var(--bg-tertiary);
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 217, 255, 0.1);
+}
+
+.table-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 15px;
+  background: linear-gradient(135deg, rgba(0, 217, 255, 0.15) 0%, rgba(255, 107, 157, 0.05) 100%);
+  padding: 12px 16px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid rgba(0, 217, 255, 0.2);
+}
+
+.table-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 15px;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(0, 217, 255, 0.1);
+  align-items: center;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.table-row:last-child {
+  border-bottom: none;
+}
+
+.table-row:hover {
+  background: rgba(0, 217, 255, 0.05);
+}
+
+.minutes-badge {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color: var(--bg-primary);
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  min-width: 45px;
+  text-align: center;
+}
+
+/* Mobile responsiveness for minutes table */
+@media (max-width: 480px) {
+  .table-header,
+  .table-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .table-row {
+    padding: 10px 12px;
+  }
+
+  .players-grid {
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    gap: 8px;
+  }
+}
