@@ -32,6 +32,8 @@ export default function App() {
   const [timerRunning, setTimerRunning] = useState(false);
   const [half, setHalf] = useState(1);
   const [matchEnded, setMatchEnded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Match timer interval
   useEffect(() => {
@@ -107,43 +109,43 @@ export default function App() {
       });
       playerIndex++;
       
-      // DEF (spread horizontally)
+      // DEF (spread to edges)
       const defY = 100;
       for (let i = 0; i < formConfig.def; i++) {
         const player = allPlayers.find(p => p.id === startingXI[playerIndex]);
-        const defSpacing = 50 / (formConfig.def + 1);
+        const defSpacing = formConfig.def > 1 ? 50 / (formConfig.def - 1) : 0;
         pitchPlayers.push({
           ...player,
           position: 'DEF',
-          x: 15 + (i + 1) * defSpacing,
+          x: 15 + i * defSpacing,
           y: defY,
         });
         playerIndex++;
       }
       
-      // MID (spread horizontally)
+      // MID (spread to edges)
       const midY = 65;
       for (let i = 0; i < formConfig.mid; i++) {
         const player = allPlayers.find(p => p.id === startingXI[playerIndex]);
-        const midSpacing = 50 / (formConfig.mid + 1);
+        const midSpacing = formConfig.mid > 1 ? 50 / (formConfig.mid - 1) : 0;
         pitchPlayers.push({
           ...player,
           position: 'MID',
-          x: 15 + (i + 1) * midSpacing,
+          x: 15 + i * midSpacing,
           y: midY,
         });
         playerIndex++;
       }
       
-      // FWD (spread horizontally)
+      // FWD (spread to edges)
       const fwdY = 30;
       for (let i = 0; i < formConfig.fwd; i++) {
         const player = allPlayers.find(p => p.id === startingXI[playerIndex]);
-        const fwdSpacing = 50 / (formConfig.fwd + 1);
+        const fwdSpacing = formConfig.fwd > 1 ? 50 / (formConfig.fwd - 1) : 0;
         pitchPlayers.push({
           ...player,
           position: 'FWD',
-          x: 15 + (i + 1) * fwdSpacing,
+          x: 15 + i * fwdSpacing,
           y: fwdY,
         });
         playerIndex++;
@@ -152,7 +154,7 @@ export default function App() {
       setPlayers(pitchPlayers);
       setMatchStarted(true);
       setScreen('match');
-      setTimerRunning(true); // Auto-start timer
+      setTimerRunning(true);
     }
   };
 
@@ -209,12 +211,12 @@ export default function App() {
 
   const handleHalfTime = () => {
     setTimerRunning(false);
-    // Could show a half-time screen here if needed
   };
 
   const handleFullTime = () => {
     setTimerRunning(false);
     setMatchEnded(true);
+    setScreen('summary');
   };
 
   const handleRestartSecondHalf = () => {
@@ -223,14 +225,14 @@ export default function App() {
   };
 
   const recordEvent = (eventType) => {
-    const displayTime = half === 1 ? matchTime : matchTime - (45 * 60); // Reset for 2nd half display
+    const displayTime = half === 1 ? matchTime : matchTime - (45 * 60);
     const mins = Math.floor(displayTime / 60);
     const secs = displayTime % 60;
     const timeStr = `${mins}'${secs.toString().padStart(2, '0')}`;
     
     const newEvent = {
       timestamp: timeStr,
-      matchTime: matchTime, // Store actual elapsed time
+      matchTime: matchTime,
       half: half,
       player: selectedPlayer.fullName,
       squadNum: selectedPlayer.squadNum,
@@ -276,6 +278,37 @@ export default function App() {
     setPlayers(updatedPlayers);
     setSelectedPlayer(null);
     setShowActionModal(false);
+  };
+
+  const handleSaveToSheet = async () => {
+    setSaving(true);
+    try {
+      const matchData = {
+        timestamp: new Date().toISOString(),
+        formation: formation,
+        totalTime: matchTime,
+        goals: events.filter(e => e.event === 'Goal').length,
+        events: events,
+        playerStats: stats,
+        startingXI: startingXI.map(id => allPlayers.find(p => p.id === id)),
+      };
+
+      const response = await fetch('/api/save-match', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matchData }),
+      });
+
+      if (!response.ok) throw new Error('Failed to save');
+      
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      console.error('Save error:', err);
+      alert('Failed to save: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   // ========== SCREENS ==========
@@ -401,7 +434,6 @@ export default function App() {
 
   if (screen === 'match' && matchStarted) {
     const displayTime = half === 1 ? matchTime : matchTime - (45 * 60);
-    const displayMins = Math.floor(displayTime / 60);
     
     return (
       <div 
@@ -606,6 +638,72 @@ export default function App() {
             </div>
           </div>
         )}
+      </div>
+    );
+  }
+
+  if (screen === 'summary' && matchEnded) {
+    const goals = events.filter(e => e.event === 'Goal').length;
+    const assists = events.filter(e => e.event === 'Assist').length;
+    const cards = events.filter(e => e.event === 'Yellow' || e.event === 'Red').length;
+
+    return (
+      <div className="container">
+        <div className="summary-screen">
+          <h1>🏁 Match Summary</h1>
+          
+          <div className="summary-stats">
+            <div className="stat-card">
+              <div className="stat-value">{goals}</div>
+              <div className="stat-label">Goals</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value">{assists}</div>
+              <div className="stat-label">Assists</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value">{cards}</div>
+              <div className="stat-label">Cards</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-value">{events.length}</div>
+              <div className="stat-label">Events</div>
+            </div>
+          </div>
+
+          <div className="summary-section">
+            <h2>Match Timeline</h2>
+            <div className="events-list">
+              {events.map((event, idx) => (
+                <div key={idx} className="event-item">
+                  <span className="time">{event.timestamp} (H{event.half})</span>
+                  <span className="event">{event.event}</span>
+                  <span className="player">#{event.squadNum} {event.player}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {saveSuccess && (
+            <div className="success-banner">✅ Saved to spreadsheet!</div>
+          )}
+
+          <div className="summary-buttons">
+            <button 
+              className="btn-primary btn-save"
+              onClick={handleSaveToSheet}
+              disabled={saving}
+            >
+              {saving ? '💾 Saving...' : '💾 Save to Spreadsheet'}
+            </button>
+            <button 
+              className="btn-secondary"
+              onClick={() => window.location.reload()}
+            >
+              🔄 Start New Match
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
