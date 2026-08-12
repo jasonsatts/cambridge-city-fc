@@ -277,7 +277,8 @@ export default function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         xi: xiPlayers,
-        subs: subsPlayers
+        subs: subsPlayers,
+        formation: formation
       })
     }).catch(e => console.log('Could not signal match start'));
     
@@ -529,9 +530,76 @@ export default function App() {
             const data = await response.json();
             if (data.isActive) {
               // Coach has started the match!
-              // Set the XI and subs from coach data
+              // Build pitch players with positioning from XI data
               if (data.selectedXI && data.selectedXI.length > 0) {
-                setPlayers(data.selectedXI);
+                // Parse formation from API
+                const formStr = data.formation || '1-4-4-2';
+                const [_, def, mid, fw] = formStr.match(/(\d)-(\d)-(\d)-(\d)/) || [null, 1, 4, 4, 2];
+                const formConfig = { def: parseInt(def), mid: parseInt(mid), fw: parseInt(fw) };
+                const pitchPlayers = [];
+                let playerIndex = 0;
+                
+                // GK
+                const gkPlayer = data.selectedXI[playerIndex];
+                if (gkPlayer) {
+                  pitchPlayers.push({
+                    ...gkPlayer,
+                    position: 'GK',
+                    x: 40,
+                    y: 120,
+                  });
+                  playerIndex++;
+                }
+                
+                // DEF
+                const defY = 100;
+                for (let i = 0; i < formConfig.def; i++) {
+                  const player = data.selectedXI[playerIndex];
+                  if (player) {
+                    const defSpacing = formConfig.def > 1 ? 50 / (formConfig.def - 1) : 0;
+                    pitchPlayers.push({
+                      ...player,
+                      position: 'DEF',
+                      x: 15 + i * defSpacing,
+                      y: defY,
+                    });
+                    playerIndex++;
+                  }
+                }
+                
+                // MID
+                const midY = 75;
+                for (let i = 0; i < formConfig.mid; i++) {
+                  const player = data.selectedXI[playerIndex];
+                  if (player) {
+                    const midSpacing = formConfig.mid > 1 ? 50 / (formConfig.mid - 1) : 0;
+                    pitchPlayers.push({
+                      ...player,
+                      position: 'MID',
+                      x: 15 + i * midSpacing,
+                      y: midY,
+                    });
+                    playerIndex++;
+                  }
+                }
+                
+                // FW
+                const fwY = 40;
+                for (let i = 0; i < formConfig.fw; i++) {
+                  const player = data.selectedXI[playerIndex];
+                  if (player) {
+                    const fwSpacing = formConfig.fw > 1 ? 50 / (formConfig.fw - 1) : 0;
+                    pitchPlayers.push({
+                      ...player,
+                      position: 'FW',
+                      x: 15 + i * fwSpacing,
+                      y: fwY,
+                    });
+                    playerIndex++;
+                  }
+                }
+                
+                setPlayers(pitchPlayers);
               }
               setMatchStarted(true);
               setScreen('match');

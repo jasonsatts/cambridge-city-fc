@@ -13,14 +13,15 @@ export default function handler(req, res) {
   if (req.method === 'POST') {
     // Coach calls this when starting/stopping match
     if (action === 'start') {
-      // Parse XI and subs from body
-      const { xi, subs } = req.body || {};
+      // Parse XI, subs, and formation from body
+      const { xi, subs, formation } = req.body || {};
       
       activeMatches[matchCode] = {
         started: true,
         startedAt: new Date().toISOString(),
         selectedXI: xi || [],
         selectedSubs: subs || [],
+        formation: formation || '1-4-4-2',
       };
       return res.status(200).json({ message: 'Match started', matchCode });
     } else if (action === 'stop') {
@@ -38,6 +39,7 @@ export default function handler(req, res) {
       startedAt: matchStatus?.startedAt,
       selectedXI: matchStatus?.selectedXI || [],
       selectedSubs: matchStatus?.selectedSubs || [],
+      formation: matchStatus?.formation || '1-4-4-2',
     });
   }
 
