@@ -484,6 +484,87 @@ export default function App() {
     }
   };
 
+  // ========== CHECK FOR SHARED TEAM SHEET URL ==========
+  const params = new URLSearchParams(window.location.search);
+  const sharedTeamSheetId = params.get('teamSheet');
+
+  // If someone is accessing via shared team sheet link, show read-only team sheet
+  if (sharedTeamSheetId && screen === 'home') {
+    const selectedXI = startingXI.map(id => allPlayers.find(p => p.id === id));
+    const selectedSubs = subs.map(id => allPlayers.find(p => p.id === id));
+
+    return (
+      <div className="container team-sheet-container">
+        <div className="team-sheet-screen">
+          <h1>📋 Team Sheet (Cambridge City FC)</h1>
+          
+          <div style={{ textAlign: 'center', marginBottom: '20px', color: 'var(--text-secondary)' }}>
+            <p>Share mode - Read Only</p>
+          </div>
+
+          {/* Match Details */}
+          <div className="team-sheet-header">
+            <div className="match-detail">
+              <span className="detail-label">Opponent:</span>
+              <span className="detail-value">{gameDetails.opponent || '—'}</span>
+            </div>
+            <div className="match-detail">
+              <span className="detail-label">Date:</span>
+              <span className="detail-value">{gameDetails.date || '—'}</span>
+            </div>
+            <div className="match-detail">
+              <span className="detail-label">Kick-off:</span>
+              <span className="detail-value">{gameDetails.kickOffTime || '—'}</span>
+            </div>
+            <div className="match-detail">
+              <span className="detail-label">Location:</span>
+              <span className="detail-value">{gameDetails.location || '—'}</span>
+            </div>
+            <div className="match-detail">
+              <span className="detail-label">Formation:</span>
+              <span className="detail-value">{formation}</span>
+            </div>
+          </div>
+
+          {/* Starting XI Cards */}
+          <div className="starting-xi-section">
+            <h2>Starting XI</h2>
+            <div className="xi-cards-grid">
+              {selectedXI.map(player => (
+                <div key={player.id} className="xi-card">
+                  <div className="xi-photo-placeholder">👤</div>
+                  <div className="xi-num">#{player.squadNum}</div>
+                  <div className="xi-name">{player.firstName} {player.surname}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Substitutes */}
+          <div className="team-sheet-subs-section">
+            <h2>Substitutes</h2>
+            <div className="subs-grid">
+              {selectedSubs.map(player => (
+                <div key={player.id} className="sub-card">
+                  <div className="sub-num">#{player.squadNum}</div>
+                  <div className="sub-name">{player.firstName} {player.surname}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <button 
+            className="btn-primary"
+            onClick={() => window.location.href = '/'}
+            style={{ marginTop: '30px', width: '100%' }}
+          >
+            ← Return to Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // ========== HOME SCREEN ==========
   if (screen === 'home') {
     return (
