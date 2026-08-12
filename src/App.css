@@ -200,9 +200,6 @@ html, body {
   box-shadow: var(--shadow-lg);
   border: 1px solid rgba(0, 217, 255, 0.1);
   animation: slideUp 0.5s ease-out;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
 }
 
 .setup-screen h1,
