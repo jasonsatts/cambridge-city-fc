@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 
+// Cache bust: Force Vercel rebuild
 const COACH_PIN = '1234';
 const FORMATIONS = {
   '1-4-4-2': { def: 4, mid: 4, fwd: 2 },
