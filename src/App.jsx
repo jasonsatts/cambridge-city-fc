@@ -264,6 +264,9 @@ export default function App() {
     setCurrentlyOnPitch(onPitch);
     setPlayerTimes(times);
     setMatchStarted(true);
+    // Sync match state to localStorage for parents to poll
+    localStorage.setItem('ccfc-match-code', matchCode);
+    localStorage.setItem('ccfc-match-started', 'true');
     setScreen('select-stats-person');
   };
 
@@ -362,7 +365,10 @@ export default function App() {
       squadNum: selectedPlayer.squadNum,
       event: eventType,
     };
-    setEvents([newEvent, ...events]);
+    const updatedEventsList = [newEvent, ...events];
+    setEvents(updatedEventsList);
+    // Sync events to localStorage for parents to see live updates
+    localStorage.setItem('ccfc-events', JSON.stringify(updatedEventsList));
 
     const updatedStats = { ...stats };
     if (!updatedStats[selectedPlayer.id]) {
@@ -497,6 +503,35 @@ export default function App() {
       setSaving(false);
     }
   };
+
+
+  // ========== PARENT POLLING FOR MATCH START & LIVE UPDATES ==========
+  useEffect(() => {
+    if (mode === 'parent') {
+      const checkMatchStatus = () => {
+        // Check localStorage for match state
+        const storedMatchStarted = localStorage.getItem('ccfc-match-started');
+        const storedEvents = localStorage.getItem('ccfc-events');
+        
+        if (storedMatchStarted === 'true') {
+          if (screen === 'parent-watch') {
+            const eventsData = storedEvents ? JSON.parse(storedEvents) : [];
+            setEvents(eventsData);
+            setMatchStarted(true);
+            setScreen('match');
+          } else if (screen === 'match') {
+            // Parent already watching - update events in real-time
+            const eventsData = storedEvents ? JSON.parse(storedEvents) : [];
+            setEvents(eventsData);
+          }
+        }
+      };
+      
+      // Poll every 1 second for live updates
+      const interval = setInterval(checkMatchStatus, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [screen, mode]);
 
   // ========== CHECK FOR SHARED TEAM SHEET URL ==========
   const params = new URLSearchParams(window.location.search);
