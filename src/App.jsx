@@ -856,8 +856,6 @@ export default function App() {
     );
   }
 
-  return null;
-}
   // ========== SELECT STATS PERSON (BEFORE MATCH) ==========
   if (screen === 'select-stats-person' && mode === 'coach' && matchStarted && !timerRunning) {
     return (
