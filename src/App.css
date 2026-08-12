@@ -1211,3 +1211,486 @@ html, body, #root {
     gap: 8px;
   }
 }
+
+/* ===== MOTM VOTING SCREEN ===== */
+.motm-voting {
+  padding: 20px;
+}
+
+.voting-confirmation {
+  text-align: center;
+  padding: 40px 20px;
+  background: linear-gradient(135deg, rgba(0, 217, 255, 0.1) 0%, rgba(0, 217, 255, 0.05) 100%);
+  border: 2px solid var(--primary);
+  border-radius: 12px;
+  margin-bottom: 30px;
+}
+
+.voting-confirmation h2 {
+  font-size: 1.8rem;
+  color: var(--primary);
+  margin-bottom: 10px;
+}
+
+.voting-confirmation p {
+  color: var(--text-secondary);
+  font-size: 1rem;
+}
+
+.motm-leader-card {
+  background: linear-gradient(135deg, var(--primary) 0%, #00B8D4 100%);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 30px;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+}
+
+.leader-label {
+  color: var(--bg-primary);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+  opacity: 0.9;
+}
+
+.leader-info {
+  color: var(--bg-primary);
+}
+
+.leader-num {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.leader-name {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.leader-votes {
+  font-size: 1rem;
+  opacity: 0.95;
+}
+
+.voting-subtitle {
+  text-align: center;
+  font-size: 1rem;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+
+.motm-players-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(85px, 1fr));
+  gap: 12px;
+  margin-bottom: 40px;
+}
+
+.motm-player-btn {
+  background: var(--bg-secondary);
+  border: 2px solid rgba(0, 217, 255, 0.2);
+  border-radius: 12px;
+  padding: 15px 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+.motm-player-btn:hover {
+  border-color: var(--primary);
+  background: var(--bg-tertiary);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 217, 255, 0.2);
+}
+
+.motm-player-btn:active {
+  transform: translateY(0);
+  background: linear-gradient(135deg, var(--primary) 0%, #00B8D4 100%);
+  border-color: var(--primary);
+  color: var(--bg-primary);
+}
+
+.motm-btn-num {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.motm-btn-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+  word-break: break-word;
+}
+
+.motm-btn-votes {
+  font-size: 0.75rem;
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.motm-results-section {
+  background: var(--bg-secondary);
+  border: 1px solid rgba(0, 217, 255, 0.1);
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.motm-results-section h3 {
+  font-size: 1rem;
+  color: var(--primary);
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.vote-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.vote-bar-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vote-bar-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.9rem;
+}
+
+.rank {
+  background: var(--primary);
+  color: var(--bg-primary);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.name {
+  color: var(--text-primary);
+  font-weight: 600;
+  flex: 1;
+}
+
+.vote-bar {
+  height: 32px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 217, 255, 0.1);
+}
+
+.vote-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary) 0%, #00B8D4 100%);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 10px;
+  position: relative;
+  min-width: 50px;
+}
+
+.vote-count {
+  font-weight: 700;
+  color: var(--bg-primary);
+  font-size: 0.9rem;
+}
+
+/* ===== MOBILE OPTIMIZATIONS ===== */
+@media (max-width: 640px) {
+  .container {
+    padding: 12px;
+  }
+
+  .home-container {
+    padding: 10px;
+  }
+
+  .home-content h1 {
+    font-size: 1.8rem;
+  }
+
+  .access-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .pin-input,
+  .code-input {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+
+  .setup-screen h1,
+  .formation-screen h1 {
+    font-size: 1.4rem;
+  }
+
+  .form-section {
+    gap: 12px;
+  }
+
+  .form-input,
+  .player-dropdown {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+
+  .btn-primary,
+  .btn-secondary {
+    font-size: 0.95rem;
+    padding: 14px 16px;
+  }
+
+  .selection-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .player-list {
+    max-height: 40vh;
+  }
+
+  .match-container {
+    padding: 10px;
+  }
+
+  .match-header {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .timer-display {
+    gap: 8px;
+  }
+
+  .time {
+    font-size: 2rem;
+  }
+
+  .half {
+    font-size: 0.9rem;
+  }
+
+  .pitch-wrapper {
+    margin-bottom: 12px;
+  }
+
+  .modal-content {
+    max-height: 70vh;
+    width: 90vw;
+    max-width: 340px;
+  }
+
+  .modal-content h2 {
+    font-size: 1.2rem;
+  }
+
+  .action-buttons {
+    gap: 8px;
+  }
+
+  .btn-action {
+    width: 45px;
+    height: 45px;
+    font-size: 1.4rem;
+  }
+
+  .sub-dropdown {
+    font-size: 14px;
+  }
+
+  .summary-screen {
+    padding: 12px;
+  }
+
+  .summary-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .stat-card {
+    padding: 16px;
+  }
+
+  .stat-value {
+    font-size: 2rem;
+  }
+
+  .stat-label {
+    font-size: 0.85rem;
+  }
+
+  .summary-section h2 {
+    font-size: 1.1rem;
+  }
+
+  .event-item {
+    padding: 10px;
+    font-size: 0.85rem;
+  }
+
+  .summary-buttons {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .motm-players-grid {
+    grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+    gap: 10px;
+  }
+
+  .motm-player-btn {
+    padding: 12px 8px;
+  }
+
+  .motm-btn-num {
+    font-size: 1.2rem;
+  }
+
+  .motm-btn-name {
+    font-size: 0.75rem;
+  }
+
+  .vote-bar-label {
+    font-size: 0.85rem;
+    gap: 8px;
+  }
+
+  .rank {
+    width: 28px;
+    height: 28px;
+    font-size: 0.85rem;
+  }
+
+  .vote-bar {
+    height: 28px;
+  }
+
+  .vote-count {
+    font-size: 0.8rem;
+  }
+
+  .parent-watch-screen {
+    padding: 12px;
+  }
+
+  .live-timer {
+    margin-bottom: 20px;
+  }
+
+  .time-display {
+    font-size: 2.5rem;
+  }
+
+  .half-display {
+    font-size: 1rem;
+  }
+
+  .players-grid {
+    grid-template-columns: repeat(auto-fill, minmax(55px, 1fr));
+    gap: 8px;
+  }
+
+  .player-badge {
+    padding: 8px;
+    border-radius: 8px;
+  }
+
+  .badge-num {
+    font-size: 1rem;
+  }
+
+  .badge-name {
+    font-size: 0.7rem;
+  }
+
+  .badge-time {
+    font-size: 0.7rem;
+  }
+
+  .events-preview h3,
+  .current-xi-section h3 {
+    font-size: 0.95rem;
+  }
+
+  .table-header,
+  .table-row {
+    font-size: 0.8rem;
+    padding: 8px 12px;
+  }
+
+  .minutes-badge {
+    font-size: 0.75rem;
+    padding: 3px 8px;
+  }
+
+  /* Touch-friendly buttons */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Better form input handling on mobile */
+  input[type="text"],
+  input[type="number"],
+  input[type="date"],
+  input[type="time"],
+  select {
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Prevent double-tap zoom */
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  button {
+    font-size: 16px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .home-title {
+    font-size: 1.6rem;
+  }
+
+  .access-card h2 {
+    font-size: 1.1rem;
+  }
+
+  .motm-players-grid {
+    grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+  }
+
+  .timer-display {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .time {
+    font-size: 1.8rem;
+  }
+}

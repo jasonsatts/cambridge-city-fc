@@ -51,6 +51,10 @@ export default function App() {
   // ⏱️ TIME-ON-PITCH TRACKING
   const [playerTimes, setPlayerTimes] = useState({}); // {playerId: [{onTime, offTime, half}]}
   const [currentlyOnPitch, setCurrentlyOnPitch] = useState(new Set()); // Set of player IDs currently on pitch
+  
+  // 👑 MOTM VOTING
+  const [motmVotes, setMotmVotes] = useState({}); // {playerId: voteCount}
+  const [userMotmVote, setUserMotmVote] = useState(null); // Track if parent has voted
 
   // Timer interval
   useEffect(() => {
@@ -400,6 +404,22 @@ export default function App() {
     setShowActionModal(false);
   };
 
+  // 👑 Handle MOTM vote from parents
+  const handleMotmVote = (playerId) => {
+    setUserMotmVote(playerId);
+    setMotmVotes(prev => ({
+      ...prev,
+      [playerId]: (prev[playerId] || 0) + 1
+    }));
+  };
+
+  const getMotmLeader = () => {
+    if (Object.keys(motmVotes).length === 0) return null;
+    return Object.entries(motmVotes).reduce((max, [playerId, votes]) =>
+      votes > (motmVotes[max] || 0) ? playerId : max
+    );
+  };
+
   const handleSaveToSheet = async () => {
     setSaving(true);
     try {
@@ -412,6 +432,7 @@ export default function App() {
         events: events,
         playerStats: stats,
         playerTimes: playerTimes, // ⏱️ Include time tracking
+        motmVotes: motmVotes, // 👑 Include MOTM votes
         startingXI: startingXI.map(id => allPlayers.find(p => p.id === id)),
       };
 
@@ -870,7 +891,93 @@ export default function App() {
   // ========== PARENT WATCH (READ-ONLY) ==========
   if (screen === 'parent-watch' && mode === 'parent') {
     const displayTime = half === 1 ? matchTime : matchTime - (45 * 60);
+    const motmLeader = getMotmLeader();
+    const motmLeaderPlayer = motmLeader ? allPlayers.find(p => p.id === parseInt(motmLeader)) : null;
     
+    // ========== MOTM VOTING (After Full-Time) ==========
+    if (matchEnded) {
+      return (
+        <div className="container">
+          <div className="parent-watch-screen motm-voting">
+            <h1>👑 Vote for Man of the Match</h1>
+            
+            {userMotmVote ? (
+              <div className="voting-confirmation">
+                <h2>✅ Vote Recorded!</h2>
+                <p>Thank you for voting</p>
+              </div>
+            ) : (
+              <>
+                {motmLeader && motmLeaderPlayer && (
+                  <div className="motm-leader-card">
+                    <p className="leader-label">Current Leading</p>
+                    <div className="leader-info">
+                      <div className="leader-num">#{motmLeaderPlayer.squadNum}</div>
+                      <div className="leader-name">{motmLeaderPlayer.firstName} {motmLeaderPlayer.surname}</div>
+                      <div className="leader-votes">{motmVotes[motmLeader] || 0} votes</div>
+                    </div>
+                  </div>
+                )}
+
+                <p className="voting-subtitle">Select your Player of the Match:</p>
+                
+                <div className="motm-players-grid">
+                  {startingXI.map(id => {
+                    const player = allPlayers.find(p => p.id === id);
+                    const playerVotes = motmVotes[id] || 0;
+                    return (
+                      <button
+                        key={id}
+                        className="motm-player-btn"
+                        onClick={() => handleMotmVote(id)}
+                      >
+                        <div className="motm-btn-num">#{player.squadNum}</div>
+                        <div className="motm-btn-name">{player.firstName}</div>
+                        <div className="motm-btn-votes">{playerVotes} votes</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            <div className="motm-results-section">
+              <h3>Vote Results</h3>
+              <div className="vote-bars">
+                {startingXI
+                  .map(id => ({
+                    id,
+                    player: allPlayers.find(p => p.id === id),
+                    votes: motmVotes[id] || 0
+                  }))
+                  .sort((a, b) => b.votes - a.votes)
+                  .slice(0, 5)
+                  .map((item, idx) => (
+                    <div key={item.id} className="vote-bar-item">
+                      <div className="vote-bar-label">
+                        <span className="rank">#{idx + 1}</span>
+                        <span className="name">#{item.player.squadNum} {item.player.firstName}</span>
+                      </div>
+                      <div className="vote-bar">
+                        <div
+                          className="vote-bar-fill"
+                          style={{
+                            width: `${Math.max(20, (item.votes / Math.max(...Object.values(motmVotes), 1)) * 100)}%`
+                          }}
+                        >
+                          <span className="vote-count">{item.votes}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    // ========== LIVE MATCH WATCH ==========
     return (
       <div className="container">
         <div className="parent-watch-screen">
