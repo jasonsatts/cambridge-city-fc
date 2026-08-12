@@ -286,8 +286,7 @@ export default function App() {
   };
 
   const handlePlayerMouseDown = (e, player) => {
-    if (mode !== 'coach') return;
-    
+    // Allow both coach and parent to tap
     const clientX = e.clientX || e.touches?.[0]?.clientX;
     const clientY = e.clientY || e.touches?.[0]?.clientY;
     setTapStartPos({ x: clientX, y: clientY });
