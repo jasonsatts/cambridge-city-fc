@@ -161,10 +161,13 @@ export default function App() {
 
   // Generate shareable team sheet link
   const generateShareableLink = () => {
-    // Store current lineup to localStorage before generating link
+    // Store current lineup AND full player data to localStorage
+    const selectedXIPlayers = startingXI.map(id => allPlayers.find(p => p.id === id)).filter(Boolean);
+    const selectedSubsPlayers = subs.map(id => allPlayers.find(p => p.id === id)).filter(Boolean);
+    
     const lineupData = {
-      startingXI,
-      subs,
+      startingXI: selectedXIPlayers,
+      subs: selectedSubsPlayers,
       gameDetails,
       formation,
       matchCode,
@@ -512,13 +515,11 @@ export default function App() {
       console.log('Could not load lineup data');
     }
 
-    const xiIds = lineupData?.startingXI || startingXI;
-    const subIds = lineupData?.subs || subs;
+    const selectedXI = lineupData?.startingXI || [];
+    const selectedSubs = lineupData?.subs || [];
     const currentGameDetails = lineupData?.gameDetails || gameDetails;
     const currentFormation = lineupData?.formation || formation;
-
-    const selectedXI = xiIds.map(id => allPlayers.find(p => p.id === id)).filter(Boolean);
-    const selectedSubs = subIds.map(id => allPlayers.find(p => p.id === id)).filter(Boolean);
+    const currentMatchCode = lineupData?.matchCode || matchCode;
 
     return (
       <div className="container team-sheet-container">
@@ -527,6 +528,12 @@ export default function App() {
           
           <div style={{ textAlign: 'center', marginBottom: '20px', color: 'var(--text-secondary)' }}>
             <p>Share mode - Read Only</p>
+          </div>
+
+          {/* Match Code Display */}
+          <div className="match-code-box">
+            <p className="code-label">Match Code:</p>
+            <div className="code-display">{currentMatchCode || 'CCFC-XXXXXX'}</div>
           </div>
 
           {/* Match Details */}
