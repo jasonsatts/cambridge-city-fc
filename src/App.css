@@ -197,6 +197,8 @@ html, body, #root {
   box-shadow: var(--shadow-lg);
   border: 1px solid rgba(0, 217, 255, 0.1);
   animation: slideUp 0.5s ease-out;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .setup-screen h1,
@@ -874,6 +876,8 @@ html, body, #root {
   max-width: 600px;
   width: 100%;
   animation: slideUp 0.5s ease-out;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .summary-screen h1 {
@@ -955,6 +959,8 @@ html, body, #root {
   max-width: 600px;
   width: 100%;
   animation: slideUp 0.5s ease-out;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .parent-watch-screen h1 {
