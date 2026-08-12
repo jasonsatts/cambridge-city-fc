@@ -28,6 +28,21 @@ export default function App() {
   const [stats, setStats] = useState({});
   const [draggedPlayer, setDraggedPlayer] = useState(null);
   const [tapStartPos, setTapStartPos] = useState(null);
+  const [matchTime, setMatchTime] = useState(0);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [half, setHalf] = useState(1);
+  const [matchEnded, setMatchEnded] = useState(false);
+
+  // Match timer interval
+  useEffect(() => {
+    let interval;
+    if (timerRunning && !matchEnded) {
+      interval = setInterval(() => {
+        setMatchTime(t => t + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [timerRunning, matchEnded]);
 
   useEffect(() => {
     fetchPlayers();
@@ -82,48 +97,54 @@ export default function App() {
       
       let playerIndex = 0;
       
-      // GK (1)
+      // GK (1 player, centered)
       const gkPlayer = allPlayers.find(p => p.id === startingXI[playerIndex]);
       pitchPlayers.push({
         ...gkPlayer,
         position: 'GK',
-        x: 50,
-        y: 92,
+        x: 40,
+        y: 120,
       });
       playerIndex++;
       
-      // DEF (towards top)
+      // DEF (spread horizontally)
+      const defY = 100;
       for (let i = 0; i < formConfig.def; i++) {
         const player = allPlayers.find(p => p.id === startingXI[playerIndex]);
+        const defSpacing = 50 / (formConfig.def + 1);
         pitchPlayers.push({
           ...player,
           position: 'DEF',
-          x: 15 + (i * (70 / (formConfig.def - 1 || 1))),
-          y: 75,
+          x: 15 + (i + 1) * defSpacing,
+          y: defY,
         });
         playerIndex++;
       }
       
-      // MID (middle)
+      // MID (spread horizontally)
+      const midY = 65;
       for (let i = 0; i < formConfig.mid; i++) {
         const player = allPlayers.find(p => p.id === startingXI[playerIndex]);
+        const midSpacing = 50 / (formConfig.mid + 1);
         pitchPlayers.push({
           ...player,
           position: 'MID',
-          x: 15 + (i * (70 / (formConfig.mid - 1 || 1))),
-          y: 50,
+          x: 15 + (i + 1) * midSpacing,
+          y: midY,
         });
         playerIndex++;
       }
       
-      // FWD (towards bottom)
+      // FWD (spread horizontally)
+      const fwdY = 30;
       for (let i = 0; i < formConfig.fwd; i++) {
         const player = allPlayers.find(p => p.id === startingXI[playerIndex]);
+        const fwdSpacing = 50 / (formConfig.fwd + 1);
         pitchPlayers.push({
           ...player,
           position: 'FWD',
-          x: 15 + (i * (70 / (formConfig.fwd - 1 || 1))),
-          y: 25,
+          x: 15 + (i + 1) * fwdSpacing,
+          y: fwdY,
         });
         playerIndex++;
       }
@@ -131,6 +152,7 @@ export default function App() {
       setPlayers(pitchPlayers);
       setMatchStarted(true);
       setScreen('match');
+      setTimerRunning(true); // Auto-start timer
     }
   };
 
@@ -151,11 +173,11 @@ export default function App() {
     const clientX = e.clientX || e.touches?.[0]?.clientX;
     const clientY = e.clientY || e.touches?.[0]?.clientY;
     
-    const x = ((clientX - rect.left) / rect.width) * 100;
-    const y = ((clientY - rect.top) / rect.height) * 100;
+    const x = ((clientX - rect.left) / rect.width) * 80;
+    const y = ((clientY - rect.top) / rect.height) * 130;
     
     setPlayers(players.map(p =>
-      p.id === draggedPlayer.id ? { ...p, x: Math.max(10, Math.min(90, x)), y: Math.max(10, Math.min(90, y)) } : p
+      p.id === draggedPlayer.id ? { ...p, x: Math.max(10, Math.min(70, x)), y: Math.max(10, Math.min(125, y)) } : p
     ));
   };
 
@@ -165,14 +187,12 @@ export default function App() {
     const clientX = e.clientX || e.changedTouches?.[0]?.clientX;
     const clientY = e.clientY || e.changedTouches?.[0]?.clientY;
     
-    // If distance < 10px, treat as tap
     const distance = Math.sqrt(
       Math.pow(clientX - tapStartPos.x, 2) + 
       Math.pow(clientY - tapStartPos.y, 2)
     );
     
     if (distance < 10) {
-      // It's a tap - select the player
       setSelectedPlayer(draggedPlayer);
       setShowActionModal(true);
     }
@@ -181,10 +201,37 @@ export default function App() {
     setTapStartPos(null);
   };
 
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleHalfTime = () => {
+    setTimerRunning(false);
+    // Could show a half-time screen here if needed
+  };
+
+  const handleFullTime = () => {
+    setTimerRunning(false);
+    setMatchEnded(true);
+  };
+
+  const handleRestartSecondHalf = () => {
+    setHalf(2);
+    setTimerRunning(true);
+  };
+
   const recordEvent = (eventType) => {
-    const time = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    const displayTime = half === 1 ? matchTime : matchTime - (45 * 60); // Reset for 2nd half display
+    const mins = Math.floor(displayTime / 60);
+    const secs = displayTime % 60;
+    const timeStr = `${mins}'${secs.toString().padStart(2, '0')}`;
+    
     const newEvent = {
-      timestamp: time,
+      timestamp: timeStr,
+      matchTime: matchTime, // Store actual elapsed time
+      half: half,
       player: selectedPlayer.fullName,
       squadNum: selectedPlayer.squadNum,
       event: eventType,
@@ -353,6 +400,9 @@ export default function App() {
   }
 
   if (screen === 'match' && matchStarted) {
+    const displayTime = half === 1 ? matchTime : matchTime - (45 * 60);
+    const displayMins = Math.floor(displayTime / 60);
+    
     return (
       <div 
         className="match-container"
@@ -362,6 +412,48 @@ export default function App() {
         onTouchMove={handleMouseMove}
         onTouchEnd={handleMouseUp}
       >
+        {/* Match Header with Timer */}
+        <div className="match-header">
+          <div className="timer-display">
+            <div className="time">{formatTime(displayTime)}</div>
+            <div className="half">Half {half}</div>
+          </div>
+          <div className="match-controls-header">
+            {!matchEnded ? (
+              <>
+                <button 
+                  className={`btn-timer ${timerRunning ? 'active' : ''}`}
+                  onClick={() => setTimerRunning(!timerRunning)}
+                >
+                  {timerRunning ? '⏸ Pause' : '▶ Play'}
+                </button>
+                {half === 1 && (
+                  <button className="btn-timer btn-half" onClick={handleHalfTime}>
+                    ⏸ Half Time
+                  </button>
+                )}
+                {half === 2 && (
+                  <button className="btn-timer btn-full" onClick={handleFullTime}>
+                    🏁 Full Time
+                  </button>
+                )}
+              </>
+            ) : (
+              <div className="full-time-label">🏁 FULL TIME</div>
+            )}
+          </div>
+        </div>
+
+        {/* Half Time Screen */}
+        {!timerRunning && half === 1 && matchTime > 0 && (
+          <div className="half-time-banner">
+            <h2>⏸ HALF TIME</h2>
+            <button className="btn-restart" onClick={handleRestartSecondHalf}>
+              Start 2nd Half ▶
+            </button>
+          </div>
+        )}
+
         {/* Pitch */}
         <div className="pitch-wrapper">
           <svg viewBox="0 0 80 130" className="pitch" style={{ cursor: draggedPlayer ? 'grabbing' : 'grab' }}>
@@ -399,7 +491,7 @@ export default function App() {
             {/* Bottom centre mark */}
             <circle cx="40" cy="127" r="0.5" fill="white" />
 
-            {/* Player markers - DRAGGABLE & TAPPABLE */}
+            {/* Player markers */}
             {players.map((player) => (
               <g 
                 key={player.id}
@@ -454,7 +546,7 @@ export default function App() {
           </button>
         </div>
 
-        {/* Events Log - Bottom Sheet */}
+        {/* Events Log */}
         {showEventsLog && (
           <div className="events-sheet">
             <div className="events-header">
