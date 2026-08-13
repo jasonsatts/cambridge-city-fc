@@ -636,6 +636,31 @@ export default function App() {
                 }
                 
                 setPlayers(pitchPlayers);
+
+                // The parent's device never ran handleContinueToMatch() —
+                // that only happens on the coach's device — so subs,
+                // on-pitch tracking, and time tracking were never populated
+                // here. That's why the substitute dropdown always showed
+                // "no substitutes available" on a parent's phone even when
+                // the coach had picked some, and why minutes played stayed
+                // stuck at 0. Sync them now from the poll data.
+                if (data.selectedSubs) {
+                  setSubs(data.selectedSubs.map(p => p.id));
+                }
+                setCurrentlyOnPitch(new Set(data.selectedXI.map(p => p.id)));
+                setPlayerTimes(prevTimes => {
+                  // Only initialize once — don't stomp on times we've
+                  // already been tracking locally across repeated polls.
+                  if (Object.keys(prevTimes).length > 0) return prevTimes;
+                  const times = {};
+                  data.selectedXI.forEach(p => {
+                    times[p.id] = [{ onTime: 0, offTime: null, half: 1 }];
+                  });
+                  (data.selectedSubs || []).forEach(p => {
+                    times[p.id] = [];
+                  });
+                  return times;
+                });
               }
               setMatchStarted(true);
               setScreen('match');
