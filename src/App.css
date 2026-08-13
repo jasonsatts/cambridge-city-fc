@@ -761,28 +761,50 @@ html, body, #root {
 .action-buttons {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 10px;
+  gap: 8px;
   margin-bottom: 28px;
-  padding: 20px;
+  padding: 20px 14px;
   background: rgba(0, 217, 255, 0.05);
   border-radius: 16px;
   border: 1px solid rgba(0, 217, 255, 0.1);
+}
+
+@media (max-width: 420px) {
+  .action-buttons {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 .btn-action {
   background: var(--bg-secondary);
   border: 2px solid rgba(0, 217, 255, 0.3);
   border-radius: 14px;
-  padding: 14px 8px;
-  font-size: 1.6rem;
+  padding: 12px 4px 10px;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  aspect-ratio: 1;
+  gap: 6px;
+  min-height: 76px;
   position: relative;
   overflow: hidden;
+}
+
+.btn-action-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.btn-action-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--text-secondary);
+  line-height: 1.1;
+  text-align: center;
 }
 
 .btn-action::before {
@@ -807,11 +829,14 @@ html, body, #root {
 }
 
 .btn-goal { border-color: #2ECC71; }
-.btn-goal:hover { 
-  border-color: #2ECC71;
+.btn-goal:hover, .btn-goal .btn-action-label { 
   box-shadow: 0 0 20px rgba(46, 204, 113, 0.3);
+}
+.btn-goal:hover {
+  border-color: #2ECC71;
   background: rgba(46, 204, 113, 0.1);
 }
+.btn-goal .btn-action-label { color: #2ECC71; }
 
 .btn-assist { border-color: var(--primary); }
 .btn-assist:hover { 
@@ -819,6 +844,7 @@ html, body, #root {
   box-shadow: 0 0 20px rgba(0, 217, 255, 0.3);
   background: rgba(0, 217, 255, 0.1);
 }
+.btn-assist .btn-action-label { color: var(--primary); }
 
 .btn-yellow { border-color: #F39C12; }
 .btn-yellow:hover { 
@@ -826,6 +852,7 @@ html, body, #root {
   box-shadow: 0 0 20px rgba(243, 156, 18, 0.3);
   background: rgba(243, 156, 18, 0.1);
 }
+.btn-yellow .btn-action-label { color: #F39C12; }
 
 .btn-red { border-color: #E74C3C; }
 .btn-red:hover { 
@@ -833,12 +860,38 @@ html, body, #root {
   box-shadow: 0 0 20px rgba(231, 76, 60, 0.3);
   background: rgba(231, 76, 60, 0.1);
 }
+.btn-red .btn-action-label { color: #E74C3C; }
 
 .btn-motm { border-color: var(--secondary); }
 .btn-motm:hover { 
   border-color: var(--secondary);
   box-shadow: 0 0 20px rgba(255, 107, 157, 0.3);
   background: rgba(255, 107, 157, 0.1);
+}
+.btn-motm .btn-action-label { color: var(--secondary); }
+
+.sub-empty {
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  font-style: italic;
+  padding: 10px 2px;
+}
+
+.sub-toast {
+  position: fixed;
+  top: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, var(--secondary) 0%, #e0568a 100%);
+  color: white;
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 12px 20px;
+  border-radius: 30px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  z-index: 300;
+  animation: slideDown 0.3s ease-out;
+  white-space: nowrap;
 }
 
 .sub-section {

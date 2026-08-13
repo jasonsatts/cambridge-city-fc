@@ -54,6 +54,7 @@ export default function App() {
   const [matchEnded, setMatchEnded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [subToast, setSubToast] = useState(''); // visible confirmation after a substitution
   
   // ⏱️ TIME-ON-PITCH TRACKING
   const [playerTimes, setPlayerTimes] = useState({});
@@ -414,19 +415,50 @@ export default function App() {
   const handleSubstitution = (subPlayerID) => {
     const subPlayer = allPlayers.find(p => p.id === subPlayerID);
     const playerComingOff = selectedPlayer;
-    
-    recordEvent('Sub Off');
-    
+    if (!subPlayer || !playerComingOff) return;
+
+    // Build both event records here directly instead of calling recordEvent()
+    // twice in a row — two calls in the same handler both read the same
+    // stale `events` snapshot, so the second setEvents() silently overwrote
+    // the first and the "Sub Off" entry was getting lost every time.
+    const displayTime = half === 1 ? matchTime : matchTime - (45 * 60);
+    const mins = Math.floor(displayTime / 60);
+    const secs = displayTime % 60;
+    const timeStr = `${mins}'${secs.toString().padStart(2, '0')}`;
+
+    const offEvent = {
+      timestamp: timeStr,
+      matchTime,
+      half,
+      player: playerComingOff.fullName || `${playerComingOff.firstName} ${playerComingOff.surname}`,
+      squadNum: playerComingOff.squadNum,
+      event: 'Sub Off',
+    };
+    const onEvent = {
+      timestamp: timeStr,
+      matchTime,
+      half,
+      player: subPlayer.fullName || `${subPlayer.firstName} ${subPlayer.surname}`,
+      squadNum: subPlayer.squadNum,
+      event: 'Sub On',
+    };
+    const updatedEventsList = [onEvent, offEvent, ...events];
+    setEvents(updatedEventsList);
+    localStorage.setItem('ccfc-events', JSON.stringify(updatedEventsList));
+
     const times = { ...playerTimes };
     if (times[playerComingOff.id] && times[playerComingOff.id].length > 0) {
       const lastSession = times[playerComingOff.id][times[playerComingOff.id].length - 1];
       if (lastSession.offTime === null) {
         lastSession.offTime = matchTime;
-        const mins = Math.floor((matchTime - lastSession.onTime) / 60);
+        const minsPlayed = Math.floor((matchTime - lastSession.onTime) / 60);
         
         const updatedStats = { ...stats };
+        if (!updatedStats[playerComingOff.id]) {
+          updatedStats[playerComingOff.id] = { goals: 0, assists: 0, yellow: 0, red: 0, motm: 0, minutesPlayed: 0 };
+        }
         updatedStats[playerComingOff.id].minutesPlayed = 
-          (updatedStats[playerComingOff.id].minutesPlayed || 0) + mins;
+          (updatedStats[playerComingOff.id].minutesPlayed || 0) + minsPlayed;
         setStats(updatedStats);
       }
     }
@@ -448,8 +480,11 @@ export default function App() {
       p.id === playerComingOff.id ? { ...subPlayer, position: subPosition, x: p.x, y: p.y } : p
     );
     setPlayers(updatedPlayers);
-    
-    recordEvent('Sub On');
+
+    // Visible confirmation — previously the modal just closed silently,
+    // so a working substitution looked identical to a broken one.
+    setSubToast(`🔄 ${subPlayer.firstName} ON · ${playerComingOff.firstName} OFF`);
+    setTimeout(() => setSubToast(''), 3500);
     
     setSelectedPlayer(null);
     setShowActionModal(false);
@@ -1231,16 +1266,34 @@ export default function App() {
 
         <div className="pitch-wrapper">
           <svg viewBox="0 0 80 130" className="pitch" style={{ cursor: draggedPlayer ? 'grabbing' : 'grab' }}>
-            <rect width="80" height="130" fill="#2d5016" />
-            <line x1="0" y1="0" x2="80" y2="0" stroke="white" strokeWidth="0.5" />
-            <line x1="0" y1="130" x2="80" y2="130" stroke="white" strokeWidth="0.5" />
-            <line x1="0" y1="0" x2="0" y2="130" stroke="white" strokeWidth="0.5" />
-            <line x1="80" y1="0" x2="80" y2="130" stroke="white" strokeWidth="0.5" />
-            <line x1="0" y1="65" x2="80" y2="65" stroke="white" strokeWidth="0.4" />
-            <circle cx="40" cy="65" r="10" stroke="white" strokeWidth="0.3" fill="none" />
-            <circle cx="40" cy="65" r="0.8" fill="white" />
-            <rect x="15" y="0" width="50" height="18" stroke="white" strokeWidth="0.3" fill="none" />
-            <rect x="15" y="112" width="50" height="18" stroke="white" strokeWidth="0.3" fill="none" />
+            <defs>
+              <linearGradient id="pitchGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#2f6e1c" />
+                <stop offset="100%" stopColor="#234f14" />
+              </linearGradient>
+              <radialGradient id="badgeGradient" cx="35%" cy="30%" r="75%">
+                <stop offset="0%" stopColor="#FF9A8B" />
+                <stop offset="55%" stopColor="#FF6B6B" />
+                <stop offset="100%" stopColor="#D94848" />
+              </radialGradient>
+              <filter id="badgeShadow" x="-50%" y="-50%" width="200%" height="200%">
+                <feDropShadow dx="0" dy="0.6" stdDeviation="0.9" floodColor="#000000" floodOpacity="0.45" />
+              </filter>
+            </defs>
+            <rect width="80" height="130" fill="url(#pitchGradient)" />
+            {/* mow stripes */}
+            {[0, 1, 2, 3, 4, 5].map(i => (
+              <rect key={i} x="0" y={i * (130 / 6)} width="80" height={130 / 6} fill="#ffffff" opacity={i % 2 === 0 ? 0.03 : 0} />
+            ))}
+            <line x1="0" y1="0" x2="80" y2="0" stroke="white" strokeWidth="0.5" opacity="0.9" />
+            <line x1="0" y1="130" x2="80" y2="130" stroke="white" strokeWidth="0.5" opacity="0.9" />
+            <line x1="0" y1="0" x2="0" y2="130" stroke="white" strokeWidth="0.5" opacity="0.9" />
+            <line x1="80" y1="0" x2="80" y2="130" stroke="white" strokeWidth="0.5" opacity="0.9" />
+            <line x1="0" y1="65" x2="80" y2="65" stroke="white" strokeWidth="0.4" opacity="0.9" />
+            <circle cx="40" cy="65" r="10" stroke="white" strokeWidth="0.3" fill="none" opacity="0.9" />
+            <circle cx="40" cy="65" r="0.8" fill="white" opacity="0.9" />
+            <rect x="15" y="0" width="50" height="18" stroke="white" strokeWidth="0.3" fill="none" opacity="0.9" />
+            <rect x="15" y="112" width="50" height="18" stroke="white" strokeWidth="0.3" fill="none" opacity="0.9" />
 
             {players.map((player) => (
               <g 
@@ -1248,14 +1301,15 @@ export default function App() {
                 onMouseDown={(e) => handlePlayerMouseDown(e, player)}
                 onTouchStart={(e) => handlePlayerMouseDown(e, player)}
                 style={{ cursor: 'grab' }}
+                filter="url(#badgeShadow)"
               >
-                <circle cx={player.x} cy={player.y} r="8.5" fill="#FF6B6B" stroke="white" strokeWidth="1.2" />
-                <circle cx={player.x} cy={player.y} r="8" fill="none" stroke="white" strokeWidth="0.3" opacity="0.6" />
+                <circle cx={player.x} cy={player.y} r="8.5" fill="url(#badgeGradient)" stroke="white" strokeWidth="1" />
+                <circle cx={player.x} cy={player.y} r="7.6" fill="none" stroke="white" strokeWidth="0.3" opacity="0.5" />
                 <text x={player.x} y={player.y + 0.8} textAnchor="middle" fill="white" fontSize="3.2" fontWeight="900" style={{ pointerEvents: 'none', letterSpacing: '-0.1' }}>
                   {player.squadNum}
                 </text>
                 <text x={player.x} y={player.y + 5.5} textAnchor="middle" fill="white" fontSize="2.1" fontWeight="700" style={{ pointerEvents: 'none' }}>
-                  {player.firstName.substring(0, 6)}
+                  {player.firstName?.substring(0, 6)}
                 </text>
               </g>
             ))}
@@ -1286,7 +1340,13 @@ export default function App() {
           </div>
         )}
 
-        {showActionModal && selectedPlayer && (
+        {subToast && (
+          <div className="sub-toast">{subToast}</div>
+        )}
+
+        {showActionModal && selectedPlayer && (() => {
+          const availableSubs = subs.filter(subID => !currentlyOnPitch.has(subID));
+          return (
           <div className="modal-overlay" onClick={() => setShowActionModal(false)}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
               <h2>#{selectedPlayer.squadNum} {selectedPlayer.firstName}</h2>
@@ -1294,38 +1354,59 @@ export default function App() {
               <p className="player-time">⏱️ {getCurrentMinutes(selectedPlayer.id)} mins</p>
 
               <div className="action-buttons">
-                <button onClick={() => recordEvent('Goal')} className="btn-action btn-goal">⚽</button>
-                <button onClick={() => recordEvent('Assist')} className="btn-action btn-assist">🎯</button>
-                <button onClick={() => recordEvent('Yellow')} className="btn-action btn-yellow">🟨</button>
-                <button onClick={() => recordEvent('Red')} className="btn-action btn-red">🟥</button>
-                <button onClick={() => recordEvent('MOTM')} className="btn-action btn-motm">👑</button>
+                <button onClick={() => recordEvent('Goal')} className="btn-action btn-goal">
+                  <span className="btn-action-icon">⚽</span>
+                  <span className="btn-action-label">Goal</span>
+                </button>
+                <button onClick={() => recordEvent('Assist')} className="btn-action btn-assist">
+                  <span className="btn-action-icon">🅰️</span>
+                  <span className="btn-action-label">Assist</span>
+                </button>
+                <button onClick={() => recordEvent('Yellow')} className="btn-action btn-yellow">
+                  <span className="btn-action-icon">🟨</span>
+                  <span className="btn-action-label">Yellow</span>
+                </button>
+                <button onClick={() => recordEvent('Red')} className="btn-action btn-red">
+                  <span className="btn-action-icon">🟥</span>
+                  <span className="btn-action-label">Red</span>
+                </button>
+                <button onClick={() => recordEvent('MOTM')} className="btn-action btn-motm">
+                  <span className="btn-action-icon">⭐</span>
+                  <span className="btn-action-label">Star Player</span>
+                </button>
               </div>
 
               <div className="sub-section">
-                <label>Substitute:</label>
-                <select onChange={(e) => {
-                  if (e.target.value) handleSubstitution(parseInt(e.target.value));
-                  e.target.value = '';
-                }} className="sub-dropdown">
-                  <option value="">Select...</option>
-                  {subs.map(subID => {
-                    const subPlayer = allPlayers.find(p => p.id === subID);
-                    if (!currentlyOnPitch.has(subID)) {
+                <label>Substitute</label>
+                {availableSubs.length === 0 ? (
+                  <p className="sub-empty">No substitutes available — everyone's already on the pitch.</p>
+                ) : (
+                  <select
+                    defaultValue=""
+                    onChange={(e) => {
+                      if (e.target.value) handleSubstitution(parseInt(e.target.value, 10));
+                      e.target.value = '';
+                    }}
+                    className="sub-dropdown"
+                  >
+                    <option value="">Bring on a substitute…</option>
+                    {availableSubs.map(subID => {
+                      const subPlayer = allPlayers.find(p => p.id === subID);
                       return (
                         <option key={subID} value={subID}>
-                          {subPlayer?.firstName} {subPlayer?.surname} ({getCurrentMinutes(subID)} mins)
+                          #{subPlayer?.squadNum} {subPlayer?.firstName} {subPlayer?.surname} · {getCurrentMinutes(subID)}′ played
                         </option>
                       );
-                    }
-                    return null;
-                  })}
-                </select>
+                    })}
+                  </select>
+                )}
               </div>
 
               <button onClick={() => setShowActionModal(false)} className="btn-close">Close</button>
             </div>
           </div>
-        )}
+          );
+        })()}
       </div>
     );
   }
