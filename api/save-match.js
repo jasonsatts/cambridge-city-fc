@@ -43,6 +43,11 @@ async function writeToGoogleSheets(matchData) {
     const result = ourScore > opponentScore ? 'Win' : ourScore < opponentScore ? 'Loss' : 'Draw';
 
     // ---------------- Match History: one row, this match ----------------
+    // valueInputOption is RAW everywhere in this file, not USER_ENTERED —
+    // confirmed by a real test write that USER_ENTERED's "smart" parsing
+    // mangled the formation "4-4-2" into the date "4-4-2002". RAW stores
+    // exactly what's sent (numbers stay numbers, strings stay literal text),
+    // which is what a programmatic integration actually wants.
     const matchHistoryRow = [
       matchCode, date, opponent, location, kickOff, matchData.formation,
       ourScore, opponentScore, result, '',
@@ -50,7 +55,7 @@ async function writeToGoogleSheets(matchData) {
     await sheets.spreadsheets.values.append({
       spreadsheetId: SHEET_ID,
       range: 'Match History!A:J',
-      valueInputOption: 'USER_ENTERED',
+      valueInputOption: 'RAW',
       requestBody: { values: [matchHistoryRow] },
     });
 
@@ -66,7 +71,7 @@ async function writeToGoogleSheets(matchData) {
       await sheets.spreadsheets.values.append({
         spreadsheetId: SHEET_ID,
         range: 'Match Events!A:H',
-        valueInputOption: 'USER_ENTERED',
+        valueInputOption: 'RAW',
         requestBody: { values: eventRows },
       });
     }
@@ -87,7 +92,7 @@ async function writeToGoogleSheets(matchData) {
       await sheets.spreadsheets.values.append({
         spreadsheetId: SHEET_ID,
         range: 'Match Player Stats!A:L',
-        valueInputOption: 'USER_ENTERED',
+        valueInputOption: 'RAW',
         requestBody: { values: statsRows },
       });
     }
