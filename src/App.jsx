@@ -56,6 +56,11 @@ export default function App() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [subToast, setSubToast] = useState(''); // visible confirmation after a substitution
   const [opponentScore, setOpponentScore] = useState(0); // goals conceded — not tied to any of our players
+  // Match format: was hardcoded to 2×45 everywhere, which is why the clock went
+  // negative at the start of the second period for a 2×40 match (and would have
+  // been nonsense entirely for JPL's 4×20). Configurable at match setup instead.
+  const [periodLengthMinutes, setPeriodLengthMinutes] = useState(40);
+  const [numPeriods, setNumPeriods] = useState(2);
   
   // ⏱️ TIME-ON-PITCH TRACKING
   const [playerTimes, setPlayerTimes] = useState({});
@@ -339,6 +344,52 @@ export default function App() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // ---- Clock helpers -----------------------------------------------------
+  // `matchTime` (seconds) counts up continuously from kickoff of period 1 and
+  // never resets — that part was already right, and player-minutes tracking
+  // depends on it staying that way. What was wrong was every *display* of it
+  // subtracting a hardcoded 45 minutes to "re-zero" for the second half. That
+  // only worked for a 2×45 match; for 2×40 it went negative the moment the
+  // second period started, and it had no concept of more than two periods at
+  // all. These two helpers are now the single source of truth for "how far
+  // into the CURRENT period are we", including stoppage time once a period
+  // runs past its scheduled length — every place that used to inline the old
+  // formula now calls one of these instead.
+  const getPeriodElapsedSeconds = () => {
+    const periodLenSec = periodLengthMinutes * 60;
+    return matchTime - (half - 1) * periodLenSec;
+  };
+
+  // For the big on-screen clock: "39:58" during normal time, "40+2:15" once
+  // a period runs long (injuries, restarts, etc.).
+  const formatPeriodClock = (elapsedSeconds) => {
+    const periodLenSec = periodLengthMinutes * 60;
+    if (elapsedSeconds <= periodLenSec) return formatTime(elapsedSeconds);
+    const extra = elapsedSeconds - periodLenSec;
+    const extraMins = Math.floor(extra / 60);
+    const extraSecs = extra % 60;
+    return `${periodLengthMinutes}+${extraMins}:${extraSecs.toString().padStart(2, '0')}`;
+  };
+
+  // For event timestamps logged against a player/opponent goal, e.g. "22'04"
+  // normally, "40+3'12" in stoppage — same idea, apostrophe style to match
+  // how the rest of the app already writes match minutes.
+  const getEventTimestamp = () => {
+    const elapsed = getPeriodElapsedSeconds();
+    const periodLenSec = periodLengthMinutes * 60;
+    const secs = elapsed % 60;
+    if (elapsed <= periodLenSec) {
+      const mins = Math.floor(elapsed / 60);
+      return `${mins}'${secs.toString().padStart(2, '0')}`;
+    }
+    const extraMins = Math.floor((elapsed - periodLenSec) / 60);
+    return `${periodLengthMinutes}+${extraMins}'${secs.toString().padStart(2, '0')}`;
+  };
+
+  // "Half 1" reads naturally for a standard 2-period match; anything else
+  // (JPL's 4×20) is clearer as "Period 2 of 4".
+  const getPeriodLabel = () => numPeriods === 2 ? `Half ${half}` : `Period ${half} of ${numPeriods}`;
+
   const handleHalfTime = () => {
     setTimerRunning(false);
   };
@@ -363,15 +414,15 @@ export default function App() {
   };
 
   const handleRestartSecondHalf = () => {
-    setHalf(2);
+    // Generalized from "second half" to "whichever period comes next" —
+    // needed for JPL's 4×20, and named this way (not renamed) so nothing
+    // else calling it needs to change.
+    setHalf(h => h + 1);
     setTimerRunning(true);
   };
 
   const recordEvent = (eventType) => {
-    const displayTime = half === 1 ? matchTime : matchTime - (45 * 60);
-    const mins = Math.floor(displayTime / 60);
-    const secs = displayTime % 60;
-    const timeStr = `${mins}'${secs.toString().padStart(2, '0')}`;
+    const timeStr = getEventTimestamp();
     
     const newEvent = {
       timestamp: timeStr,
@@ -417,10 +468,7 @@ export default function App() {
   // conceded isn't tied to any of our players and has no selectedPlayer to
   // attach to. Logs the time (for Match Events) and bumps the running score.
   const recordOpponentGoal = () => {
-    const displayTime = half === 1 ? matchTime : matchTime - (45 * 60);
-    const mins = Math.floor(displayTime / 60);
-    const secs = displayTime % 60;
-    const timeStr = `${mins}'${secs.toString().padStart(2, '0')}`;
+    const timeStr = getEventTimestamp();
 
     const newEvent = {
       timestamp: timeStr,
@@ -445,10 +493,7 @@ export default function App() {
     // twice in a row — two calls in the same handler both read the same
     // stale `events` snapshot, so the second setEvents() silently overwrote
     // the first and the "Sub Off" entry was getting lost every time.
-    const displayTime = half === 1 ? matchTime : matchTime - (45 * 60);
-    const mins = Math.floor(displayTime / 60);
-    const secs = displayTime % 60;
-    const timeStr = `${mins}'${secs.toString().padStart(2, '0')}`;
+    const timeStr = getEventTimestamp();
 
     const offEvent = {
       timestamp: timeStr,
@@ -938,6 +983,26 @@ export default function App() {
                 className="form-input"
               />
             </div>
+
+            <div className="form-group">
+              <label>Match Format</label>
+              <div className="format-options">
+                <button
+                  type="button"
+                  className={`format-btn ${numPeriods === 2 && periodLengthMinutes === 40 ? 'active' : ''}`}
+                  onClick={() => { setNumPeriods(2); setPeriodLengthMinutes(40); }}
+                >
+                  2 × 40 min
+                </button>
+                <button
+                  type="button"
+                  className={`format-btn ${numPeriods === 4 && periodLengthMinutes === 20 ? 'active' : ''}`}
+                  onClick={() => { setNumPeriods(4); setPeriodLengthMinutes(20); }}
+                >
+                  4 × 20 min (JPL)
+                </button>
+              </div>
+            </div>
           </div>
 
           <button 
@@ -1273,7 +1338,8 @@ export default function App() {
 
   // ========== MATCH SCREEN (COACH ONLY) ==========
   if (screen === 'match' && matchStarted && (mode === 'coach' || mode === 'parent')) {
-    const displayTime = half === 1 ? matchTime : matchTime - (45 * 60);
+    const displayTime = getPeriodElapsedSeconds();
+    const isFinalPeriod = half >= numPeriods;
     
     return (
       <div 
@@ -1286,8 +1352,8 @@ export default function App() {
       >
         <div className="match-header">
           <div className="timer-display">
-            <div className="time">{formatTime(displayTime)}</div>
-            <div className="half">Half {half}</div>
+            <div className="time">{formatPeriodClock(displayTime)}</div>
+            <div className="half">{getPeriodLabel()}</div>
           </div>
           <div className="match-controls-header">
             {/* Was coach-only. In practice the coach hands off after kickoff and
@@ -1302,12 +1368,12 @@ export default function App() {
                 >
                   {timerRunning ? '⏸' : '▶'}
                 </button>
-                {half === 1 && (
+                {!isFinalPeriod && (
                   <button className="btn-timer btn-half" onClick={handleHalfTime}>
                     ⏸
                   </button>
                 )}
-                {half === 2 && (
+                {isFinalPeriod && (
                   <button className="btn-timer btn-full" onClick={handleFullTime}>
                     🏁
                   </button>
@@ -1321,11 +1387,11 @@ export default function App() {
           </div>
         </div>
 
-        {!timerRunning && half === 1 && matchTime > 0 && (
+        {!timerRunning && !isFinalPeriod && matchTime > 0 && (
           <div className="half-time-banner">
-            <h2>⏸ HALF TIME</h2>
+            <h2>⏸ {numPeriods === 2 ? 'HALF TIME' : `END OF PERIOD ${half}`}</h2>
             <button className="btn-restart" onClick={handleRestartSecondHalf}>
-              Start 2nd Half ▶
+              Start {numPeriods === 2 ? '2nd Half' : `Period ${half + 1}`} ▶
             </button>
           </div>
         )}
@@ -1498,7 +1564,7 @@ export default function App() {
 
   // ========== PARENT WATCH (READ-ONLY) ==========
   if (screen === 'parent-watch' && mode === 'parent') {
-    const displayTime = half === 1 ? matchTime : matchTime - (45 * 60);
+    const displayTime = getPeriodElapsedSeconds();
     const motmLeader = getMotmLeader();
     const motmLeaderPlayer = motmLeader ? allPlayers.find(p => p.id === parseInt(motmLeader)) : null;
     
@@ -1599,8 +1665,8 @@ export default function App() {
           ) : (
             <>
               <div className="live-timer">
-                <div className="time-display">{formatTime(displayTime)}</div>
-                <div className="half-display">Half {half}</div>
+                <div className="time-display">{formatPeriodClock(displayTime)}</div>
+                <div className="half-display">{getPeriodLabel()}</div>
               </div>
 
               <div className="current-xi-section">

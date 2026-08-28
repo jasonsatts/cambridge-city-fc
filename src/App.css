@@ -225,6 +225,30 @@ html, body, #root {
   letter-spacing: 0.5px;
 }
 
+.format-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.format-btn {
+  background: var(--bg-tertiary);
+  border: 1px solid rgba(0, 217, 255, 0.2);
+  color: var(--text-secondary);
+  border-radius: 8px;
+  padding: 12px 10px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.format-btn.active {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(0, 217, 255, 0.1);
+}
+
 .form-input {
   width: 100%;
   background: var(--bg-tertiary);
