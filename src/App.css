@@ -556,6 +556,12 @@ html, body, #root {
   background: var(--bg-tertiary);
 }
 
+.btn-half,
+.btn-full {
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
 .btn-timer.active,
 .btn-half,
 .btn-full {

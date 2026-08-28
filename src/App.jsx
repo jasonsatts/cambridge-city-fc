@@ -1405,9 +1405,13 @@ export default function App() {
                 >
                   {timerRunning ? '⏸' : '▶'}
                 </button>
+                {/* Was also showing ⏸ — identical to the play/pause toggle
+                    right next to it, so it looked like a duplicate button.
+                    This one ends the half, not pauses the clock — give it
+                    its own icon and a label so that's obvious at a glance. */}
                 {!isFinalPeriod && (
                   <button className="btn-timer btn-half" onClick={handleHalfTime}>
-                    ⏸
+                    ⏹ End Half
                   </button>
                 )}
                 {isFinalPeriod && (
