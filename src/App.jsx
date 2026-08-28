@@ -55,6 +55,7 @@ export default function App() {
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [subToast, setSubToast] = useState(''); // visible confirmation after a substitution
+  const [opponentScore, setOpponentScore] = useState(0); // goals conceded — not tied to any of our players
   
   // ⏱️ TIME-ON-PITCH TRACKING
   const [playerTimes, setPlayerTimes] = useState({});
@@ -412,6 +413,29 @@ export default function App() {
     setShowActionModal(false);
   };
 
+  // Opposition scoring — deliberately separate from recordEvent, since a goal
+  // conceded isn't tied to any of our players and has no selectedPlayer to
+  // attach to. Logs the time (for Match Events) and bumps the running score.
+  const recordOpponentGoal = () => {
+    const displayTime = half === 1 ? matchTime : matchTime - (45 * 60);
+    const mins = Math.floor(displayTime / 60);
+    const secs = displayTime % 60;
+    const timeStr = `${mins}'${secs.toString().padStart(2, '0')}`;
+
+    const newEvent = {
+      timestamp: timeStr,
+      matchTime: matchTime,
+      half: half,
+      player: '',
+      squadNum: '',
+      event: 'Opposition Goal',
+    };
+    const updatedEventsList = [newEvent, ...events];
+    setEvents(updatedEventsList);
+    localStorage.setItem('ccfc-events', JSON.stringify(updatedEventsList));
+    setOpponentScore(prev => prev + 1);
+  };
+
   const handleSubstitution = (subPlayerID) => {
     const subPlayer = allPlayers.find(p => p.id === subPlayerID);
     const playerComingOff = selectedPlayer;
@@ -523,16 +547,21 @@ export default function App() {
     setSaving(true);
     try {
       const matchData = {
+        matchCode,
         timestamp: new Date().toISOString(),
         gameDetails,
         formation: formation,
         totalTime: matchTime,
         goals: events.filter(e => e.event === 'Goal').length,
+        opponentScore,
         events: events,
         playerStats: stats,
         playerTimes: playerTimes,
         motmVotes: motmVotes,
         startingXI: startingXI.map(id => allPlayers.find(p => p.id === id)),
+        // Subs weren't included before, so anyone who came off the bench never
+        // got a Match Player Stats row at all — needed now for "stats per game".
+        subs: subs.map(id => allPlayers.find(p => p.id === id)),
       };
 
       const response = await fetch('/api/save-match', {
@@ -541,7 +570,10 @@ export default function App() {
         body: JSON.stringify({ matchData }),
       });
 
-      if (!response.ok) throw new Error('Failed to save');
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        throw new Error(errBody.message || errBody.error || 'Failed to save');
+      }
       
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -1258,7 +1290,11 @@ export default function App() {
             <div className="half">Half {half}</div>
           </div>
           <div className="match-controls-header">
-            {mode === 'coach' && !matchEnded ? (
+            {/* Was coach-only. In practice the coach hands off after kickoff and
+                never touches their device again until full-time — the parent
+                doing live stats-tracking needs to be the one who can pause,
+                go to half-time, and end the match, or nobody ever can. */}
+            {(mode === 'coach' || mode === 'parent') && !matchEnded ? (
               <>
                 <button 
                   className={`btn-timer ${timerRunning ? 'active' : ''}`}
@@ -1347,6 +1383,16 @@ export default function App() {
         </div>
 
         <div className="match-controls">
+          <div className="live-score">
+            <span className="live-score-us">Us {events.filter(e => e.event === 'Goal').length}</span>
+            <span className="live-score-sep">–</span>
+            <span className="live-score-them">{opponentScore} Them</span>
+          </div>
+          {!matchEnded && (
+            <button className="btn-control btn-opp-goal" onClick={recordOpponentGoal}>
+              ⚽ Opposition Goal
+            </button>
+          )}
           <button className="btn-control" onClick={() => setShowEventsLog(!showEventsLog)}>
             📋 Events ({events.length})
           </button>
@@ -1594,7 +1640,10 @@ export default function App() {
   }
 
   // ========== SUMMARY SCREEN ==========
-  if (screen === 'summary' && matchEnded && mode === 'coach') {
+  // Was coach-only — same fix as the timer controls above, so whichever
+  // device actually ran the match (usually the parent) can reach Full Time
+  // and press Save.
+  if (screen === 'summary' && matchEnded && (mode === 'coach' || mode === 'parent')) {
     const goals = events.filter(e => e.event === 'Goal').length;
     const assists = events.filter(e => e.event === 'Assist').length;
     const cards = events.filter(e => e.event === 'Yellow' || e.event === 'Red').length;
@@ -1607,11 +1656,19 @@ export default function App() {
       }))
       .sort((a, b) => b.minutes - a.minutes);
 
+    const finalResult = goals > opponentScore ? 'Win' : goals < opponentScore ? 'Loss' : 'Draw';
+
     return (
       <div className="container">
         <div className="summary-screen">
           <h1>🏁 Match Summary</h1>
-          
+
+          <div className={`final-score-banner result-${finalResult.toLowerCase()}`}>
+            <span className="final-score-opponent">{gameDetails.opponent || 'Opponent'}</span>
+            <span className="final-score-line">{goals} – {opponentScore}</span>
+            <span className="final-score-result">{finalResult}</span>
+          </div>
+
           <div className="summary-stats">
             <div className="stat-card">
               <div className="stat-value">{goals}</div>

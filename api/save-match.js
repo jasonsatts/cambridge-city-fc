@@ -1,8 +1,13 @@
 import { google } from 'googleapis';
 import { auth } from 'google-auth-library';
 
-// Google Sheet configuration
-const SHEET_ID = '1HNU4KIb_84KTASKqwV32Jeo3Wcr4jJyV2px5hM9eC9s';
+// Google Sheet configuration — points at the rebuilt spreadsheet (Aug 2026).
+// Schema: Players / Fixtures / Match History / Match Events / Match Player Stats
+// / Season Stats. Season Stats is formula-driven from Match Player Stats and is
+// NEVER written to directly — every write below is a plain append, on purpose,
+// so Google Sheets' append-finds-the-next-empty-row behaviour always lands new
+// rows exactly where expected (see README tab in the sheet for why that matters).
+const SHEET_ID = '1gQjpR0bmxx2j4pqZN8F_kfm-VDPU4VojkO2gz-4A0hs';
 
 /**
  * Writes match data to Google Sheets
@@ -10,7 +15,6 @@ const SHEET_ID = '1HNU4KIb_84KTASKqwV32Jeo3Wcr4jJyV2px5hM9eC9s';
  */
 async function writeToGoogleSheets(matchData) {
   try {
-    // Check if credentials exist
     const credentialsJson = process.env.GOOGLE_SHEETS_CREDENTIALS;
     if (!credentialsJson) {
       console.log('⚠️  Google Sheets credentials not configured. Skipping write.');
@@ -18,101 +22,79 @@ async function writeToGoogleSheets(matchData) {
     }
 
     const credentials = JSON.parse(credentialsJson);
-    
-    // Authenticate with Google
     const authClient = new auth.GoogleAuth({
       credentials,
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
-
     const sheets = google.sheets({ version: 'v4', auth: authClient });
 
-    // Prepare data for Match Events tab
-    const eventRows = matchData.events.map(event => [
-      new Date().toISOString().split('T')[0],
-      matchData.gameDetails.opponent || 'Unknown',
-      event.timestamp,
-      event.event,
-      event.player,
-      event.squadNum,
-    ]);
+    const matchCode = matchData.matchCode || 'UNKNOWN';
+    const date = matchData.gameDetails?.date || new Date().toISOString().split('T')[0];
+    const opponent = matchData.gameDetails?.opponent || 'Unknown';
+    const location = matchData.gameDetails?.location || '';
+    const kickOff = matchData.gameDetails?.kickOffTime || '';
 
-    // Write to Match Events tab (GID: varies, but we'll append)
+    const ourScore = matchData.events.filter(e => e.event === 'Goal').length;
+    const opponentScore = matchData.opponentScore || 0;
+    const result = ourScore > opponentScore ? 'Win' : ourScore < opponentScore ? 'Loss' : 'Draw';
+
+    // ---------------- Match History: one row, this match ----------------
+    const matchHistoryRow = [
+      matchCode, date, opponent, location, kickOff, matchData.formation,
+      ourScore, opponentScore, result, '',
+    ];
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SHEET_ID,
+      range: 'Match History!A:J',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [matchHistoryRow] },
+    });
+
+    // ---------------- Match Events: one row per event, chronological ----------------
+    // events are stored newest-first in the app (each new one unshifted onto the
+    // front) — reverse so the sheet reads top-to-bottom in the order they happened.
+    const chronological = [...matchData.events].reverse();
+    const eventRows = chronological.map(event => [
+      matchCode, date, opponent, event.timestamp, event.event,
+      event.squadNum || '', event.player || '', '',
+    ]);
     if (eventRows.length > 0) {
       await sheets.spreadsheets.values.append({
         spreadsheetId: SHEET_ID,
-        range: 'Match Events!A:F',
+        range: 'Match Events!A:H',
         valueInputOption: 'USER_ENTERED',
-        requestBody: {
-          values: eventRows,
-        },
+        requestBody: { values: eventRows },
       });
     }
 
-    // Prepare data for Season Stats tab (player performance)
-    const statsRows = matchData.startingXI
-      .concat(
-        matchData.playerStats 
-          ? Object.entries(matchData.playerStats).map(([id, stats]) => ({
-              id,
-              ...stats
-            }))
-          : []
-      )
-      .filter(p => p.id)
-      .map(player => [
-        new Date().toISOString().split('T')[0],
-        matchData.gameDetails.opponent || 'Unknown',
-        player.firstName,
-        player.surname,
-        player.squadNum,
-        matchData.playerStats?.[player.id]?.goals || 0,
-        matchData.playerStats?.[player.id]?.assists || 0,
-        matchData.playerStats?.[player.id]?.yellow || 0,
-        matchData.playerStats?.[player.id]?.red || 0,
-        matchData.playerStats?.[player.id]?.minutesPlayed || 0,
-        matchData.playerStats?.[player.id]?.motm || 0,
-      ]);
-
+    // ---------------- Match Player Stats: one row per player who was in the squad ----------------
+    // Union of starters + subs (not just starters) so anyone who was named for
+    // this match gets a row — including unused subs, at 0 minutes.
+    const squad = [...(matchData.startingXI || []), ...(matchData.subs || [])]
+      .filter(p => p && p.id);
+    const statsRows = squad.map(player => {
+      const s = matchData.playerStats?.[player.id] || {};
+      return [
+        matchCode, date, opponent, player.squadNum, player.firstName, player.surname,
+        s.minutesPlayed || 0, s.goals || 0, s.assists || 0, s.yellow || 0, s.red || 0, s.motm || 0,
+      ];
+    });
     if (statsRows.length > 0) {
       await sheets.spreadsheets.values.append({
         spreadsheetId: SHEET_ID,
-        range: 'Season Stats!A:K',
+        range: 'Match Player Stats!A:L',
         valueInputOption: 'USER_ENTERED',
-        requestBody: {
-          values: statsRows,
-        },
+        requestBody: { values: statsRows },
       });
     }
-
-    // Write to Match History tab
-    const matchHistoryRow = [
-      new Date().toISOString().split('T')[0],
-      matchData.gameDetails.opponent || 'Unknown',
-      matchData.gameDetails.location || 'Unknown',
-      matchData.events.filter(e => e.event === 'Goal').length,
-      matchData.events.filter(e => e.event === 'Yellow').length,
-      matchData.events.filter(e => e.event === 'Red').length,
-      Math.floor(matchData.totalTime / 60),
-      matchData.formation,
-    ];
-
-    await sheets.spreadsheets.values.append({
-      spreadsheetId: SHEET_ID,
-      range: 'Match History!A:H',
-      valueInputOption: 'USER_ENTERED',
-      requestBody: {
-        values: [matchHistoryRow],
-      },
-    });
 
     return {
       success: true,
       message: 'Data written to Google Sheets',
       rowsWritten: {
-        events: eventRows.length,
-        stats: statsRows.length,
         matchHistory: 1,
+        events: eventRows.length,
+        playerStats: statsRows.length,
       },
     };
   } catch (error) {
@@ -132,17 +114,29 @@ export default async function handler(req, res) {
     if (!matchData) {
       return res.status(400).json({ error: 'No match data provided' });
     }
+    if (!matchData.matchCode) {
+      return res.status(400).json({ error: 'matchCode is required — cannot save a match with no code' });
+    }
 
-    // Always log the data
     console.log('📊 Match Data Received:', {
-      opponent: matchData.gameDetails.opponent,
+      matchCode: matchData.matchCode,
+      opponent: matchData.gameDetails?.opponent,
       events: matchData.events.length,
-      goals: matchData.events.filter(e => e.event === 'Goal').length,
       timestamp: new Date().toISOString(),
     });
 
-    // Try to write to Google Sheets
     const sheetsResult = await writeToGoogleSheets(matchData);
+
+    // If the sheet write failed, say so plainly — this used to report
+    // success:true even when nothing was actually saved, which is exactly
+    // how a silent failure went unnoticed for a full season.
+    if (!sheetsResult.success) {
+      return res.status(502).json({
+        success: false,
+        message: 'Match data received but NOT saved to Google Sheets: ' + sheetsResult.message,
+        sheetsWrite: sheetsResult,
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -152,11 +146,10 @@ export default async function handler(req, res) {
         matchDate: new Date().toISOString(),
         eventsRecorded: matchData.events?.length || 0,
         goalsRecorded: matchData.events?.filter(e => e.event === 'Goal').length || 0,
-        minutesTracked: matchData.playerTimes ? Object.keys(matchData.playerTimes).length : 0,
       },
     });
   } catch (error) {
     console.error('❌ Save match error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 }

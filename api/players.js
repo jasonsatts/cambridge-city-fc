@@ -1,7 +1,7 @@
 export default async function handler(req, res) {
   try {
-    const SHEET_ID = '1HNU4KIb_84KTASKqwV32Jeo3Wcr4jJyV2px5hM9eC9s';
-    const PLAYERS_GID = '1456060265';
+    const SHEET_ID = '1gQjpR0bmxx2j4pqZN8F_kfm-VDPU4VojkO2gz-4A0hs';
+    const PLAYERS_GID = '1633553013';
     const PLAYERS_CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${PLAYERS_GID}`;
 
     // Fetch on server side (no CORS issues)
