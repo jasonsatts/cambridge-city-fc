@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import { auth } from 'google-auth-library';
+import { GoogleAuth } from 'google-auth-library';
 
 // Google Sheet configuration — points at the rebuilt spreadsheet (Aug 2026).
 // Schema: Players / Fixtures / Match History / Match Events / Match Player Stats
@@ -22,7 +22,11 @@ async function writeToGoogleSheets(matchData) {
     }
 
     const credentials = JSON.parse(credentialsJson);
-    const authClient = new auth.GoogleAuth({
+    // Was `new auth.GoogleAuth(...)` — the library's `auth` export is
+    // already a singleton GoogleAuth instance, not a namespace containing a
+    // constructor, so that threw "GoogleAuth is not a constructor" every
+    // time. GoogleAuth itself is the class to instantiate.
+    const authClient = new GoogleAuth({
       credentials,
       scopes: ['https://www.googleapis.com/auth/spreadsheets'],
     });
