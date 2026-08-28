@@ -33,7 +33,7 @@ export default async function handler(req, res) {
         started_at: new Date().toISOString(),
         selected_xi: xi || [],
         selected_subs: subs || [],
-        formation: formation || '1-4-4-2',
+        formation: formation || '4-4-2',
       };
 
       if (supabase) {
@@ -84,7 +84,7 @@ export default async function handler(req, res) {
       startedAt: matchStatus?.started_at,
       selectedXI: matchStatus?.selected_xi || [],
       selectedSubs: matchStatus?.selected_subs || [],
-      formation: matchStatus?.formation || '1-4-4-2',
+      formation: matchStatus?.formation || '4-4-2',
     });
   }
 

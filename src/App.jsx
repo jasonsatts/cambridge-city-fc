@@ -4,11 +4,11 @@ import './App.css';
 // Cache bust: Force Vercel rebuild
 const COACH_PIN = '1234';
 const FORMATIONS = {
-  '1-4-4-2': { def: 4, mid: 4, fwd: 2 },
-  '1-4-5-1': { def: 4, mid: 5, fwd: 1 },
-  '1-4-3-3': { def: 4, mid: 3, fwd: 3 },
-  '1-5-4-1': { def: 5, mid: 4, fwd: 1 },
-  '1-3-5-2': { def: 3, mid: 5, fwd: 2 },
+  '4-4-2': { def: 4, mid: 4, fwd: 2 },
+  '4-5-1': { def: 4, mid: 5, fwd: 1 },
+  '4-3-3': { def: 4, mid: 3, fwd: 3 },
+  '5-4-1': { def: 5, mid: 4, fwd: 1 },
+  '3-5-2': { def: 3, mid: 5, fwd: 2 },
 };
 
 // Shareable team sheet ID generator
@@ -34,9 +34,8 @@ export default function App() {
 
   const [startingXI, setStartingXI] = useState([]);
   const [subs, setSubs] = useState([]);
-  const [formation, setFormation] = useState('1-4-4-2');
+  const [formation, setFormation] = useState('4-4-2');
   const [teamSheetId, setTeamSheetId] = useState(''); // Unique shareable link
-  const [statsPerson, setStatsPerson] = useState(null); // Who tracks the match
   const [teamPublished, setTeamPublished] = useState(false); // Coach published team
   
   const [matchStarted, setMatchStarted] = useState(false);
@@ -54,6 +53,11 @@ export default function App() {
   const [matchEnded, setMatchEnded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  // Persists (doesn't auto-clear like saveSuccess) so the summary screen can
+  // tell "already saved, don't do it again" apart from "still in progress" —
+  // needed now that saving is automatic, so a second manual tap of the Save
+  // button can't accidentally append a duplicate set of rows to the sheet.
+  const [hasSavedToSheet, setHasSavedToSheet] = useState(false);
   const [subToast, setSubToast] = useState(''); // visible confirmation after a substitution
   const [opponentScore, setOpponentScore] = useState(0); // goals conceded — not tied to any of our players
   // Match format: was hardcoded to 2×45 everywhere, which is why the clock went
@@ -66,9 +70,11 @@ export default function App() {
   const [playerTimes, setPlayerTimes] = useState({});
   const [currentlyOnPitch, setCurrentlyOnPitch] = useState(new Set());
   
-  // 👑 MOTM VOTING
-  const [motmVotes, setMotmVotes] = useState({});
-  const [userMotmVote, setUserMotmVote] = useState(null);
+  // MOTM: kept simple deliberately. There's no "other parents vote" model any
+  // more — the coaching staff just tap the ⭐ Star Player button on whoever
+  // they pick, live during/just after the match, the same way they log a
+  // goal or a card. Whatever players have motm > 0 in `stats` at save time
+  // are shown as MOTM on the summary screen — no separate voting state needed.
 
   // Timer interval
   useEffect(() => {
@@ -80,6 +86,22 @@ export default function App() {
     }
     return () => clearInterval(interval);
   }, [timerRunning, matchEnded]);
+
+  // Guard against losing the match data: if a save to Sheets is in flight
+  // (auto-triggered at Full Time, or a manual retry) and someone closes the
+  // tab or the phone locks/reloads, warn them first. Browsers show their own
+  // generic "leave site?" prompt — the returnValue text itself is ignored by
+  // modern browsers, but setting it is still required to trigger the prompt.
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    if (saving) {
+      window.addEventListener('beforeunload', handler);
+    }
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [saving]);
 
   useEffect(() => {
     fetchPlayers();
@@ -289,7 +311,8 @@ export default function App() {
       })
     }).catch(e => console.log('Could not signal match start'));
     
-    setScreen('select-stats-person');
+    setScreen('team-published');
+    setTeamPublished(true);
   };
 
   const handlePlayerMouseDown = (e, player) => {
@@ -411,6 +434,14 @@ export default function App() {
     });
     setStats(finalStats);
     setScreen('summary');
+
+    // Auto-save straight to Sheets the moment Full Time is pressed — no
+    // separate button press needed in the normal path. finalStats is passed
+    // explicitly rather than relying on the `stats` state closure, because
+    // setStats() above hasn't been applied to this render yet (React batches
+    // it) — reading `stats` here would silently miss the final minutes we
+    // just calculated for anyone still on the pitch.
+    handleSaveToSheet(finalStats);
   };
 
   const handleRestartSecondHalf = () => {
@@ -559,21 +590,6 @@ export default function App() {
     setShowActionModal(false);
   };
 
-  const handleMotmVote = (playerId) => {
-    setUserMotmVote(playerId);
-    setMotmVotes(prev => ({
-      ...prev,
-      [playerId]: (prev[playerId] || 0) + 1
-    }));
-  };
-
-  const getMotmLeader = () => {
-    if (Object.keys(motmVotes).length === 0) return null;
-    return Object.entries(motmVotes).reduce((max, [playerId, votes]) =>
-      votes > (motmVotes[max] || 0) ? playerId : max
-    );
-  };
-
   const getCurrentMinutes = (playerId) => {
     if (!playerTimes[playerId]) return 0;
     let total = stats[playerId]?.minutesPlayed || 0;
@@ -588,7 +604,7 @@ export default function App() {
     return total;
   };
 
-  const handleSaveToSheet = async () => {
+  const handleSaveToSheet = async (statsOverride) => {
     setSaving(true);
     try {
       const matchData = {
@@ -600,9 +616,11 @@ export default function App() {
         goals: events.filter(e => e.event === 'Goal').length,
         opponentScore,
         events: events,
-        playerStats: stats,
+        // Prefer the caller's fresher copy (handleFullTime passes the just-
+        // computed finalStats) over component state, which may not have
+        // caught up yet — see the comment in handleFullTime.
+        playerStats: statsOverride || stats,
         playerTimes: playerTimes,
-        motmVotes: motmVotes,
         startingXI: startingXI.map(id => allPlayers.find(p => p.id === id)),
         // Subs weren't included before, so anyone who came off the bench never
         // got a Match Player Stats row at all — needed now for "stats per game".
@@ -621,6 +639,7 @@ export default function App() {
       }
       
       setSaveSuccess(true);
+      setHasSavedToSheet(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
       console.error('Save error:', err);
@@ -647,8 +666,8 @@ export default function App() {
                 // Parse formation from API — reuse the same FORMATIONS lookup
                 // the coach uses, instead of a regex that was mis-parsing the
                 // leading "1" as the defender count and dropping fwd entirely.
-                const formStr = data.formation || '1-4-4-2';
-                const formConfig = FORMATIONS[formStr] || FORMATIONS['1-4-4-2'];
+                const formStr = data.formation || '4-4-2';
+                const formConfig = FORMATIONS[formStr] || FORMATIONS['4-4-2'];
                 const pitchPlayers = [];
                 let playerIndex = 0;
                 
@@ -1267,7 +1286,7 @@ export default function App() {
               className="btn-primary"
               onClick={handleContinueToMatch}
             >
-              ✅ Team Confirmed → Start Match
+              ✅ Publish Team Sheet
             </button>
             <button 
               className="btn-secondary"
@@ -1281,56 +1300,61 @@ export default function App() {
     );
   }
 
-  // ========== SELECT STATS PERSON (BEFORE MATCH) ==========
-  if (screen === 'select-stats-person' && mode === 'coach' && matchStarted && !timerRunning) {
-    const selectedSubs = subs.map(id => allPlayers.find(p => p.id === id)).filter(Boolean);
+  // ========== TEAM PUBLISHED (COACH'S JOB IS DONE) ==========
+  // Replaces the old "Designate Stats Person" step — nobody's formally
+  // assigned as stats tracker any more; the coaching staff sort that out
+  // themselves, and whichever parent has the phone presses ▶ on the live
+  // match screen to kick off. The coach doesn't need to do anything else
+  // from here until full-time.
+  if (screen === 'team-published' && mode === 'coach') {
+    const shareableUrl = generateShareableLink();
     return (
       <div className="container">
-        <div className="stats-person-screen">
-          <h1>👤 Designate Stats Person</h1>
-          <p className="stats-subtitle">Who will track the match today?</p>
-          
-          <div className="stats-options">
-            <div className="option-group">
-              <h2>📱 Live Match Tracker</h2>
-              <p>Person who records goals, assists, cards, subs</p>
-              <select 
-                className="stats-select"
-                onChange={(e) => {
-                  if (e.target.value) {
-                    setStatsPerson(parseInt(e.target.value));
+        <div className="team-published-screen">
+          <h1>✅ Team Published</h1>
+          <p className="stats-subtitle">
+            Parents can join now. Whoever's doing stats today presses ▶ on the
+            match screen when kickoff happens — you're all set.
+          </p>
+
+          <div className="match-code-box">
+            <p className="code-label">Match Code for Parents:</p>
+            <div className="code-display">{matchCode || 'CCFC-XXXXXX'}</div>
+            <p className="code-hint">Parents enter this under "Parents → Join"</p>
+          </div>
+
+          <div className="share-section">
+            <div className="share-link-box">
+              <input type="text" value={shareableUrl} readOnly className="share-link-input" />
+              <button
+                className="btn-copy"
+                onClick={() => {
+                  navigator.clipboard.writeText(shareableUrl);
+                  alert('Link copied to clipboard!');
+                }}
+              >
+                📋 Copy Link
+              </button>
+            </div>
+            <div className="share-buttons">
+              <button
+                className="btn-share"
+                onClick={() => {
+                  if (navigator.share) {
+                    navigator.share({
+                      title: `${gameDetails.opponent} - Team Sheet`,
+                      text: `View the team selection for Cambridge City FC`,
+                      url: shareableUrl,
+                    });
+                  } else {
+                    alert('Share not supported on this device');
                   }
                 }}
               >
-                <option value="">Select a person...</option>
-                <option value="0">Coach (Me)</option>
-                {selectedSubs.map(player => (
-                  <option key={player.id} value={player.id}>
-                    {player.firstName} {player.surname} (Parent)
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="option-group info-box">
-              <p><strong>👤 Coach:</strong> Always has access</p>
-              <p><strong>📊 Stats Person:</strong> One designated parent/assistant to track events</p>
-              <p><strong>👥 Other Parents:</strong> View team sheet before match, MOTM voting after</p>
+                🔗 Share Link
+              </button>
             </div>
           </div>
-
-          <button 
-            className="btn-primary"
-            onClick={() => {
-              setMatchStarted(true);
-              setScreen('match');
-              setTimerRunning(true);
-              setPlayers(buildPitchPlayers());
-            }}
-            disabled={!statsPerson && statsPerson !== 0}
-          >
-            🏁 Start Match
-          </button>
         </div>
       </div>
     );
@@ -1565,91 +1589,6 @@ export default function App() {
   // ========== PARENT WATCH (READ-ONLY) ==========
   if (screen === 'parent-watch' && mode === 'parent') {
     const displayTime = getPeriodElapsedSeconds();
-    const motmLeader = getMotmLeader();
-    const motmLeaderPlayer = motmLeader ? allPlayers.find(p => p.id === parseInt(motmLeader)) : null;
-    
-    // MOTM VOTING (After Full-Time)
-    if (matchEnded) {
-      return (
-        <div className="container">
-          <div className="parent-watch-screen motm-voting">
-            <h1>👑 Vote for Man of the Match</h1>
-            
-            {userMotmVote ? (
-              <div className="voting-confirmation">
-                <h2>✅ Vote Recorded!</h2>
-                <p>Thank you for voting</p>
-              </div>
-            ) : (
-              <>
-                {motmLeader && motmLeaderPlayer && (
-                  <div className="motm-leader-card">
-                    <p className="leader-label">Current Leading</p>
-                    <div className="leader-info">
-                      <div className="leader-num">#{motmLeaderPlayer.squadNum}</div>
-                      <div className="leader-name">{motmLeaderPlayer.firstName} {motmLeaderPlayer.surname}</div>
-                      <div className="leader-votes">{motmVotes[motmLeader] || 0} votes</div>
-                    </div>
-                  </div>
-                )}
-
-                <p className="voting-subtitle">Select your Player of the Match:</p>
-                
-                <div className="motm-players-grid">
-                  {startingXI.map(id => {
-                    const player = allPlayers.find(p => p.id === id);
-                    const playerVotes = motmVotes[id] || 0;
-                    return (
-                      <button
-                        key={id}
-                        className="motm-player-btn"
-                        onClick={() => handleMotmVote(id)}
-                      >
-                        <div className="motm-btn-num">#{player.squadNum}</div>
-                        <div className="motm-btn-name">{player.firstName}</div>
-                        <div className="motm-btn-votes">{playerVotes} votes</div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-
-            <div className="motm-results-section">
-              <h3>Vote Results</h3>
-              <div className="vote-bars">
-                {startingXI
-                  .map(id => ({
-                    id,
-                    player: allPlayers.find(p => p.id === id),
-                    votes: motmVotes[id] || 0
-                  }))
-                  .sort((a, b) => b.votes - a.votes)
-                  .slice(0, 5)
-                  .map((item, idx) => (
-                    <div key={item.id} className="vote-bar-item">
-                      <div className="vote-bar-label">
-                        <span className="rank">#{idx + 1}</span>
-                        <span className="name">#{item.player.squadNum} {item.player.firstName}</span>
-                      </div>
-                      <div className="vote-bar">
-                        <div
-                          className="vote-bar-fill"
-                          style={{
-                            width: `${Math.max(20, (item.votes / Math.max(...Object.values(motmVotes), 1)) * 100)}%`
-                          }}
-                        >
-                          <span className="vote-count">{item.votes}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
     
     // LIVE MATCH WATCH
     return (
@@ -1724,6 +1663,11 @@ export default function App() {
 
     const finalResult = goals > opponentScore ? 'Win' : goals < opponentScore ? 'Loss' : 'Draw';
 
+    // No more post-match voting — MOTM is whoever got tapped as ⭐ Star Player
+    // live during the match (same mechanic as goals/cards). If more than one
+    // got starred, show all of them rather than silently picking one.
+    const motmPlayers = playersWithMinutes.filter(p => (stats[p.id]?.motm || 0) > 0);
+
     return (
       <div className="container">
         <div className="summary-screen">
@@ -1734,6 +1678,12 @@ export default function App() {
             <span className="final-score-line">{goals} – {opponentScore}</span>
             <span className="final-score-result">{finalResult}</span>
           </div>
+
+          {motmPlayers.length > 0 && (
+            <div className="motm-summary-banner">
+              ⭐ {motmPlayers.map(p => `#${p.squadNum} ${p.firstName} ${p.surname}`).join(', ')}
+            </div>
+          )}
 
           <div className="summary-stats">
             <div className="stat-card">
@@ -1788,13 +1738,23 @@ export default function App() {
           )}
 
           <div className="summary-buttons">
-            <button 
-              className="btn-primary"
-              onClick={handleSaveToSheet}
-              disabled={saving}
-            >
-              {saving ? '💾 Saving...' : '💾 Save to Sheets'}
-            </button>
+            {/* Saving is automatic the moment Full Time is pressed (see
+                handleFullTime) — this button now only shows when there's
+                actually something to do: still in progress, or a retry after
+                a failed auto-save. Once hasSavedToSheet is true we show a
+                fixed confirmation instead, so a second tap can't append a
+                duplicate set of rows to the sheet. */}
+            {hasSavedToSheet ? (
+              <div className="success-banner">✅ Saved to Sheets</div>
+            ) : (
+              <button
+                className="btn-primary"
+                onClick={() => handleSaveToSheet()}
+                disabled={saving}
+              >
+                {saving ? '💾 Saving...' : '💾 Retry Save to Sheets'}
+              </button>
+            )}
             <button 
               className="btn-secondary"
               onClick={() => window.location.reload()}

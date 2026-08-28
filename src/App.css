@@ -1175,6 +1175,17 @@ html, body, #root {
   animation: slideDown 0.3s ease-out;
 }
 
+.motm-summary-banner {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 215, 0, 0.05) 100%);
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  border-radius: 10px;
+  padding: 12px;
+  color: #ffd700;
+  text-align: center;
+  font-weight: 700;
+  margin-bottom: 15px;
+}
+
 /* ===== PARENT WATCH SCREEN ===== */
 .parent-watch-screen {
   max-width: 600px;
