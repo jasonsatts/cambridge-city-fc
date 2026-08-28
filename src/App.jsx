@@ -789,7 +789,18 @@ export default function App() {
       const interval = setInterval(checkMatchStart, 1000);
       return () => clearInterval(interval);
     }
-  }, [mode, matchCode]);
+    // `screen` MUST be a dependency here — this effect's own guard
+    // (screen === 'parent-watch') is what's supposed to stop the polling
+    // once the parent reaches the live match screen. Without `screen` in
+    // this array, React never re-evaluates that guard after the first
+    // render, so the interval it set up back on 'parent-watch' just kept
+    // running forever — every second, for the rest of the match, silently
+    // rebuilding the whole pitch from the ORIGINAL starting XI (the only
+    // thing the server actually knows about) and stomping over every
+    // substitution made since. A sub would flash correctly for well under
+    // a second and then get reverted. Confirmed live: this was exactly
+    // the bug where substituted players' names never stuck on the pitch.
+  }, [mode, matchCode, screen]);
 
   // ========== CHECK FOR SHARED TEAM SHEET URL ==========
   const params = new URLSearchParams(window.location.search);
