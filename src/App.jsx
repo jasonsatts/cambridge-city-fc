@@ -647,6 +647,11 @@ export default function App() {
                 if (data.selectedSubs) {
                   setSubs(data.selectedSubs.map(p => p.id));
                 }
+                // Same gap as subs above: startingXI also never got set on
+                // a parent's device, so the rolling-substitution eligibility
+                // check (which needs the full starters+subs squad) only
+                // ever saw the bench list here. Sync it too.
+                setStartingXI(data.selectedXI.map(p => p.id));
                 setCurrentlyOnPitch(new Set(data.selectedXI.map(p => p.id)));
                 setPlayerTimes(prevTimes => {
                   // Only initialize once — don't stomp on times we've
@@ -1370,7 +1375,16 @@ export default function App() {
         )}
 
         {showActionModal && selectedPlayer && (() => {
-          const availableSubs = subs.filter(subID => !currentlyOnPitch.has(subID));
+          // Rolling subs: eligibility is the WHOLE named squad (starters +
+          // bench), not just the original bench list. `subs` alone only
+          // ever contains the players picked as substitutes before kickoff,
+          // so once a starter was subbed off she'd vanish from every future
+          // dropdown — and once the one original sub had been used, nobody
+          // was ever eligible again. Grassroots matches roll subs freely
+          // (same player can go on and off repeatedly), so anyone in
+          // today's squad who isn't currently on the pitch is fair game.
+          const fullSquadIDs = [...new Set([...startingXI, ...subs])];
+          const availableSubs = fullSquadIDs.filter(id => !currentlyOnPitch.has(id));
           return (
           <div className="modal-overlay" onClick={() => setShowActionModal(false)}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
