@@ -65,6 +65,15 @@ export default function App() {
   // been nonsense entirely for JPL's 4×20). Configurable at match setup instead.
   const [periodLengthMinutes, setPeriodLengthMinutes] = useState(40);
   const [numPeriods, setNumPeriods] = useState(2);
+  // matchTime value at the moment the CURRENT period began. Was originally
+  // computed as (half-1)*periodLengthMinutes*60 — i.e. assumed every prior
+  // period ran for exactly its scheduled length. Confirmed by testing that
+  // this breaks the instant a period runs long or short of schedule (which
+  // is the entire point of stoppage time) — period 2 would start showing a
+  // negative clock carrying over whatever the previous period was off by.
+  // Recording the real matchTime at each transition fixes this regardless
+  // of how long any period actually ran.
+  const [periodStartTime, setPeriodStartTime] = useState(0);
   
   // ⏱️ TIME-ON-PITCH TRACKING
   const [playerTimes, setPlayerTimes] = useState({});
@@ -379,8 +388,7 @@ export default function App() {
   // runs past its scheduled length — every place that used to inline the old
   // formula now calls one of these instead.
   const getPeriodElapsedSeconds = () => {
-    const periodLenSec = periodLengthMinutes * 60;
-    return matchTime - (half - 1) * periodLenSec;
+    return matchTime - periodStartTime;
   };
 
   // For the big on-screen clock: "39:58" during normal time, "40+2:15" once
@@ -448,6 +456,11 @@ export default function App() {
     // Generalized from "second half" to "whichever period comes next" —
     // needed for JPL's 4×20, and named this way (not renamed) so nothing
     // else calling it needs to change.
+    // Record the real matchTime this period is starting from — NOT an
+    // assumed "previous period ran exactly periodLengthMinutes" value. The
+    // timer is paused (timerRunning false) for the whole time this button is
+    // visible, so `matchTime` here is stable and safe to read directly.
+    setPeriodStartTime(matchTime);
     setHalf(h => h + 1);
     setTimerRunning(true);
   };
