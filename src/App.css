@@ -44,7 +44,16 @@ body {
 }
 
 html, body, #root {
+  /* Was a flat 100vh, which is the classic mobile bug: vh doesn't account
+     for the browser's own address bar / toolbar, so on a phone in
+     portrait (where that chrome eats a much bigger share of the screen)
+     content sized against 100vh can end up hidden underneath it -- this
+     is exactly the dropdown-disappears-in-portrait-but-not-landscape bug
+     Jason found. 100dvh ("dynamic viewport height") is the standard fix:
+     it tracks the browser chrome's actual on-screen size. Kept 100vh
+     first as a fallback for older browsers that don't know dvh yet. */
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
 }
 
@@ -54,6 +63,7 @@ html, body, #root {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+  min-height: 100dvh;
   padding: 20px;
   background: linear-gradient(135deg, var(--bg-primary) 0%, #1a2332 60%, #0d3b5c 100%);
 }
@@ -182,6 +192,7 @@ html, body, #root {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+  min-height: 100dvh;
   padding: 20px;
   background: linear-gradient(135deg, var(--bg-primary) 0%, #1a2332 100%);
 }
@@ -530,6 +541,7 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh;
   background: linear-gradient(135deg, var(--bg-primary) 0%, #1a2332 60%, #0d3b5c 100%);
   overflow-y: auto;
   padding-top: 0;
