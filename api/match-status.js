@@ -26,7 +26,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     if (action === 'start') {
-      const { xi, subs, formation } = req.body || {};
+      const { xi, subs, formation, gameDetails, periodLengthMinutes, numPeriods } = req.body || {};
       const payload = {
         match_code: matchCode,
         started: true,
@@ -34,6 +34,17 @@ export default async function handler(req, res) {
         selected_xi: xi || [],
         selected_subs: subs || [],
         formation: formation || '4-4-2',
+        // gameDetails/period format used to just never be sent at all — the
+        // parent's device (which is the one that actually saves the match)
+        // had no way to know the opponent, location, kick-off time, or
+        // whether the coach had picked JPL's 4x20 quarters. Bundled as one
+        // JSON column rather than several new ones since none of it needs
+        // to be queried/filtered on its own.
+        match_meta: {
+          gameDetails: gameDetails || {},
+          periodLengthMinutes: periodLengthMinutes || 40,
+          numPeriods: numPeriods || 2,
+        },
       };
 
       if (supabase) {
@@ -85,6 +96,9 @@ export default async function handler(req, res) {
       selectedXI: matchStatus?.selected_xi || [],
       selectedSubs: matchStatus?.selected_subs || [],
       formation: matchStatus?.formation || '4-4-2',
+      gameDetails: matchStatus?.match_meta?.gameDetails || {},
+      periodLengthMinutes: matchStatus?.match_meta?.periodLengthMinutes || 40,
+      numPeriods: matchStatus?.match_meta?.numPeriods || 2,
     });
   }
 

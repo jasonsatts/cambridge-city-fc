@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 
 // Cache bust: Force Vercel rebuild
@@ -85,15 +85,42 @@ export default function App() {
   // goal or a card. Whatever players have motm > 0 in `stats` at save time
   // are shown as MOTM on the summary screen — no separate voting state needed.
 
-  // Timer interval
+  // Timer interval — anchored to a wall-clock timestamp instead of just
+  // counting ticks. A plain setInterval-only clock falls behind (or freezes
+  // entirely) the moment the phone locks or the browser tab is backgrounded
+  // — mobile browsers throttle or fully suspend JS timers to save battery,
+  // and no web page can override that. What this CAN do: the instant the
+  // phone is unlocked or the tab regains focus, snap the displayed clock to
+  // the CORRECT elapsed time instead of staying stuck wherever it was when
+  // it froze. Every time Play is pressed, `timerAnchorRef` records "what
+  // matchTime was, and what the real time was, at that instant" — every
+  // tick (and every visibility/focus event) recomputes matchTime from that
+  // anchor via Date.now(), so missed ticks while backgrounded just get
+  // caught up in one jump rather than silently lost.
+  const timerAnchorRef = useRef(null);
   useEffect(() => {
-    let interval;
-    if (timerRunning && !matchEnded) {
-      interval = setInterval(() => {
-        setMatchTime(t => t + 1);
-      }, 1000);
+    if (!timerRunning || matchEnded) {
+      timerAnchorRef.current = null;
+      return;
     }
-    return () => clearInterval(interval);
+
+    timerAnchorRef.current = { wallClock: Date.now(), matchTime };
+
+    const sync = () => {
+      if (!timerAnchorRef.current) return;
+      const elapsedSec = Math.floor((Date.now() - timerAnchorRef.current.wallClock) / 1000);
+      setMatchTime(timerAnchorRef.current.matchTime + elapsedSec);
+    };
+
+    const interval = setInterval(sync, 1000);
+    document.addEventListener('visibilitychange', sync);
+    window.addEventListener('focus', sync);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', sync);
+      window.removeEventListener('focus', sync);
+    };
   }, [timerRunning, matchEnded]);
 
   // Guard against losing the match data: if a save to Sheets is in flight
@@ -220,65 +247,66 @@ export default function App() {
   // Get formation config
   const getFormationConfig = () => FORMATIONS[formation];
 
-  // Build pitch players for display
-  const buildPitchPlayers = () => {
-    const formConfig = getFormationConfig();
+  // x-position for the i-th player in a row of `count` players, evenly
+  // spread across the pitch width. Was `15 + i * (count>1 ? 50/(count-1) : 0)`
+  // inlined at every call site — for a row of exactly 1 (a lone striker in
+  // 4-5-1/5-4-1, or any single-occupant row) that always evaluated to a flat
+  // 15, pinning them to the left touchline instead of the centre. Centring
+  // a lone player is the correct football default, so that's the fix.
+  const rowX = (count, i) => {
+    if (count === 1) return 40;
+    return 15 + i * (50 / (count - 1));
+  };
+
+  // Pure version of the pitch-layout builder — takes an explicit XI list and
+  // formation string instead of reading them off state, so it works equally
+  // for the coach (who has them in local state already) and the parent's
+  // poll handler (which only has them as fields on a fetch response, before
+  // any state has actually been set this tick). Used to be duplicated almost
+  // verbatim in both places, which is exactly how the centring bug above
+  // ended up fixed in one copy and not the other the first time around.
+  const buildPitchPlayersFrom = (xiList, formationStr) => {
+    const formConfig = FORMATIONS[formationStr] || FORMATIONS['4-4-2'];
     const pitchPlayers = [];
     let playerIndex = 0;
-    
-    // GK (bottom, defending y: 120)
-    const gkPlayer = allPlayers.find(p => p.id === startingXI[playerIndex]);
-    pitchPlayers.push({
-      ...gkPlayer,
-      position: 'GK',
-      x: 40,
-      y: 120,
-    });
-    playerIndex++;
-    
-    // DEF (back row, y: 100)
-    const defY = 100;
+
+    const gkPlayer = xiList[playerIndex];
+    if (gkPlayer) {
+      pitchPlayers.push({ ...gkPlayer, position: 'GK', x: 40, y: 120 });
+      playerIndex++;
+    }
+
     for (let i = 0; i < formConfig.def; i++) {
-      const player = allPlayers.find(p => p.id === startingXI[playerIndex]);
-      const defSpacing = formConfig.def > 1 ? 50 / (formConfig.def - 1) : 0;
-      pitchPlayers.push({
-        ...player,
-        position: 'DEF',
-        x: 15 + i * defSpacing,
-        y: defY,
-      });
-      playerIndex++;
+      const player = xiList[playerIndex];
+      if (player) {
+        pitchPlayers.push({ ...player, position: 'DEF', x: rowX(formConfig.def, i), y: 100 });
+        playerIndex++;
+      }
     }
-    
-    // MID (midfield row, y: 65)
-    const midY = 65;
+
     for (let i = 0; i < formConfig.mid; i++) {
-      const player = allPlayers.find(p => p.id === startingXI[playerIndex]);
-      const midSpacing = formConfig.mid > 1 ? 50 / (formConfig.mid - 1) : 0;
-      pitchPlayers.push({
-        ...player,
-        position: 'MID',
-        x: 15 + i * midSpacing,
-        y: midY,
-      });
-      playerIndex++;
+      const player = xiList[playerIndex];
+      if (player) {
+        pitchPlayers.push({ ...player, position: 'MID', x: rowX(formConfig.mid, i), y: 65 });
+        playerIndex++;
+      }
     }
-    
-    // FWD (top, attacking y: 30)
-    const fwdY = 30;
+
     for (let i = 0; i < formConfig.fwd; i++) {
-      const player = allPlayers.find(p => p.id === startingXI[playerIndex]);
-      const fwdSpacing = formConfig.fwd > 1 ? 50 / (formConfig.fwd - 1) : 0;
-      pitchPlayers.push({
-        ...player,
-        position: 'FWD',
-        x: 15 + i * fwdSpacing,
-        y: fwdY,
-      });
-      playerIndex++;
+      const player = xiList[playerIndex];
+      if (player) {
+        pitchPlayers.push({ ...player, position: 'FWD', x: rowX(formConfig.fwd, i), y: 30 });
+        playerIndex++;
+      }
     }
-    
+
     return pitchPlayers;
+  };
+
+  // Build pitch players for display
+  const buildPitchPlayers = () => {
+    const xiList = startingXI.map(id => allPlayers.find(p => p.id === id)).filter(Boolean);
+    return buildPitchPlayersFrom(xiList, formation);
   };
 
   // Continue to match start (after team sheet published)
@@ -309,14 +337,20 @@ export default function App() {
     setMatchStarted(true);
     
     // Signal to parents that match has started (send XI/subs data)
-    
+    // Now also sends gameDetails and the match format — previously only
+    // xi/subs/formation went over, so the parent's device (which is the one
+    // that actually saves the match) never knew the opponent, location,
+    // kick-off time, or how many periods/how long they were.
     fetch(`/api/match-status?matchCode=${matchCode}&action=start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         xi: xiPlayers,
         subs: subsPlayers,
-        formation: formation
+        formation: formation,
+        gameDetails: gameDetails,
+        periodLengthMinutes: periodLengthMinutes,
+        numPeriods: numPeriods,
       })
     }).catch(e => console.log('Could not signal match start'));
     
@@ -417,9 +451,14 @@ export default function App() {
     return `${periodLengthMinutes}+${extraMins}'${secs.toString().padStart(2, '0')}`;
   };
 
-  // "Half 1" reads naturally for a standard 2-period match; anything else
-  // (JPL's 4×20) is clearer as "Period 2 of 4".
-  const getPeriodLabel = () => numPeriods === 2 ? `Half ${half}` : `Period ${half} of ${numPeriods}`;
+  // "Half 1" reads naturally for a standard 2-period match; a 4-period
+  // match (JPL's 4x20) reads as ordinal quarters, not "Period 2 of 4".
+  const QUARTER_NAMES = ['1st Quarter', '2nd Quarter', '3rd Quarter', '4th Quarter'];
+  const getPeriodLabel = () => {
+    if (numPeriods === 2) return `Half ${half}`;
+    if (numPeriods === 4) return QUARTER_NAMES[half - 1] || `Period ${half} of ${numPeriods}`;
+    return `Period ${half} of ${numPeriods}`;
+  };
 
   const handleHalfTime = () => {
     setTimerRunning(false);
@@ -429,14 +468,29 @@ export default function App() {
     setTimerRunning(false);
     setMatchEnded(true);
     
-    // Calculate final minutes
+    // Calculate final minutes. Was: finalStats[playerId].minutesPlayed =
+    // Math.floor(matchTime / 60) — i.e. it overwrote whoever was still on
+    // the pitch with the RAW TOTAL MATCH DURATION, discarding both when
+    // their current stint actually started AND any minutes already banked
+    // from earlier stints (handleSubstitution correctly adds those when a
+    // player comes OFF — this just never used that number). That's exactly
+    // why every player still on the pitch at full-time showed the same
+    // total-match-minutes figure regardless of when they'd come on, and why
+    // substitutions during the match didn't show up in the final numbers.
+    // Fixed to match the same "prior banked minutes + current stint" logic
+    // getCurrentMinutes already uses correctly for the live in-match display.
     const finalStats = { ...stats };
     currentlyOnPitch.forEach(playerId => {
       if (playerTimes[playerId] && playerTimes[playerId].length > 0) {
         const lastSession = playerTimes[playerId][playerTimes[playerId].length - 1];
         if (lastSession.offTime === null) {
-          const minutes = Math.floor(matchTime / 60);
-          finalStats[playerId].minutesPlayed = minutes;
+          const currentStintMinutes = Math.floor((matchTime - lastSession.onTime) / 60);
+          const priorMinutes = finalStats[playerId]?.minutesPlayed || 0;
+          finalStats[playerId] = {
+            goals: 0, assists: 0, yellow: 0, red: 0, motm: 0,
+            ...finalStats[playerId],
+            minutesPlayed: priorMinutes + currentStintMinutes,
+          };
         }
       }
     });
@@ -676,75 +730,26 @@ export default function App() {
               // Coach has started the match!
               // Build pitch players with positioning from XI data
               if (data.selectedXI && data.selectedXI.length > 0) {
-                // Parse formation from API — reuse the same FORMATIONS lookup
-                // the coach uses, instead of a regex that was mis-parsing the
-                // leading "1" as the defender count and dropping fwd entirely.
                 const formStr = data.formation || '4-4-2';
-                const formConfig = FORMATIONS[formStr] || FORMATIONS['4-4-2'];
-                const pitchPlayers = [];
-                let playerIndex = 0;
-                
-                // GK (bottom, defending y: 120)
-                const gkPlayer = data.selectedXI[playerIndex];
-                if (gkPlayer) {
-                  pitchPlayers.push({
-                    ...gkPlayer,
-                    position: 'GK',
-                    x: 40,
-                    y: 120,
-                  });
-                  playerIndex++;
-                }
-                
-                // DEF (back row, y: 100)
-                const defY = 100;
-                for (let i = 0; i < formConfig.def; i++) {
-                  const player = data.selectedXI[playerIndex];
-                  if (player) {
-                    const defSpacing = formConfig.def > 1 ? 50 / (formConfig.def - 1) : 0;
-                    pitchPlayers.push({
-                      ...player,
-                      position: 'DEF',
-                      x: 15 + i * defSpacing,
-                      y: defY,
-                    });
-                    playerIndex++;
-                  }
-                }
-                
-                // MID (midfield row, y: 65)
-                const midY = 65;
-                for (let i = 0; i < formConfig.mid; i++) {
-                  const player = data.selectedXI[playerIndex];
-                  if (player) {
-                    const midSpacing = formConfig.mid > 1 ? 50 / (formConfig.mid - 1) : 0;
-                    pitchPlayers.push({
-                      ...player,
-                      position: 'MID',
-                      x: 15 + i * midSpacing,
-                      y: midY,
-                    });
-                    playerIndex++;
-                  }
-                }
-                
-                // FWD (top, attacking y: 30)
-                const fwdY = 30;
-                for (let i = 0; i < formConfig.fwd; i++) {
-                  const player = data.selectedXI[playerIndex];
-                  if (player) {
-                    const fwdSpacing = formConfig.fwd > 1 ? 50 / (formConfig.fwd - 1) : 0;
-                    pitchPlayers.push({
-                      ...player,
-                      position: 'FWD',
-                      x: 15 + i * fwdSpacing,
-                      y: fwdY,
-                    });
-                    playerIndex++;
-                  }
-                }
-                
-                setPlayers(pitchPlayers);
+                setPlayers(buildPitchPlayersFrom(data.selectedXI, formStr));
+
+                // Was missing entirely: the parent's device never received
+                // gameDetails (opponent/location/kick-off), the real
+                // formation, or the match format (period length / number of
+                // periods) at all — only the squad. That's exactly why
+                // today's saved match showed "Unknown" opponent, blank
+                // location/kick-off, and 4-4-2 regardless of what was
+                // actually picked (4-4-2 is just this component's hardcoded
+                // initial state, never overwritten): the parent's device —
+                // the one that actually performs the save — was working off
+                // its own defaults the entire time. Same root cause as the
+                // JPL quarters not showing: numPeriods/periodLengthMinutes
+                // were never synced either, so a parent's device stayed on
+                // the 2×40 default no matter what the coach picked.
+                setFormation(formStr);
+                if (data.gameDetails) setGameDetails(data.gameDetails);
+                if (data.periodLengthMinutes) setPeriodLengthMinutes(data.periodLengthMinutes);
+                if (data.numPeriods) setNumPeriods(data.numPeriods);
 
                 // The parent's device never ran handleContinueToMatch() —
                 // that only happens on the coach's device — so subs,
@@ -1422,7 +1427,7 @@ export default function App() {
                     its own icon and a label so that's obvious at a glance. */}
                 {!isFinalPeriod && (
                   <button className="btn-timer btn-half" onClick={handleHalfTime}>
-                    ⏹ End Half
+                    ⏹ {numPeriods === 2 ? 'End Half' : 'End Quarter'}
                   </button>
                 )}
                 {isFinalPeriod && (
@@ -1441,9 +1446,9 @@ export default function App() {
 
         {!timerRunning && !isFinalPeriod && matchTime > 0 && (
           <div className="half-time-banner">
-            <h2>⏸ {numPeriods === 2 ? 'HALF TIME' : `END OF PERIOD ${half}`}</h2>
+            <h2>⏸ {numPeriods === 2 ? 'HALF TIME' : `END OF ${QUARTER_NAMES[half - 1]?.toUpperCase() || `PERIOD ${half}`}`}</h2>
             <button className="btn-restart" onClick={handleRestartSecondHalf}>
-              Start {numPeriods === 2 ? '2nd Half' : `Period ${half + 1}`} ▶
+              Start {numPeriods === 2 ? '2nd Half' : (QUARTER_NAMES[half] || `Period ${half + 1}`)} ▶
             </button>
           </div>
         )}
