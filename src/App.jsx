@@ -171,6 +171,7 @@ export default function App() {
           yellow: 0, 
           red: 0, 
           motm: 0,
+          top3: 0,
           minutesPlayed: 0
         };
       });
@@ -492,7 +493,7 @@ export default function App() {
           const currentStintMinutes = Math.floor((matchTime - lastSession.onTime) / 60);
           const priorMinutes = finalStats[playerId]?.minutesPlayed || 0;
           finalStats[playerId] = {
-            goals: 0, assists: 0, yellow: 0, red: 0, motm: 0,
+            goals: 0, assists: 0, yellow: 0, red: 0, motm: 0, top3: 0,
             ...finalStats[playerId],
             minutesPlayed: priorMinutes + currentStintMinutes,
           };
@@ -542,7 +543,7 @@ export default function App() {
 
     const updatedStats = { ...stats };
     if (!updatedStats[selectedPlayer.id]) {
-      updatedStats[selectedPlayer.id] = { goals: 0, assists: 0, yellow: 0, red: 0, motm: 0, minutesPlayed: 0 };
+      updatedStats[selectedPlayer.id] = { goals: 0, assists: 0, yellow: 0, red: 0, motm: 0, top3: 0, minutesPlayed: 0 };
     }
 
     switch (eventType) {
@@ -563,6 +564,37 @@ export default function App() {
         break;
     }
 
+    setStats(updatedStats);
+    setShowActionModal(false);
+  };
+
+  // Top 3 Performers — separate from Star Player/MOTM deliberately (Jason:
+  // "we will also keep player of the match, but also the top 3"). Unranked,
+  // capped at exactly 3 for the whole squad, toggleable so a mis-tap can be
+  // undone. Built as a live in-match tap (same pattern as Star Player) and
+  // not a post-match picker, because Full Time auto-saves immediately —
+  // anything chosen after that save fired would need a second write, and
+  // every write in this app is an append-only INSERT (by design, to avoid
+  // fragile search-then-update logic), so a second save would create
+  // duplicate rows rather than update the first one.
+  const toggleTop3 = (playerId) => {
+    const updatedStats = { ...stats };
+    if (!updatedStats[playerId]) {
+      updatedStats[playerId] = { goals: 0, assists: 0, yellow: 0, red: 0, motm: 0, top3: 0, minutesPlayed: 0 };
+    }
+    const currentlyIn = !!updatedStats[playerId].top3;
+    if (currentlyIn) {
+      updatedStats[playerId] = { ...updatedStats[playerId], top3: 0 };
+      setStats(updatedStats);
+      setShowActionModal(false);
+      return;
+    }
+    const currentTop3Count = Object.values(updatedStats).filter(s => s?.top3).length;
+    if (currentTop3Count >= 3) {
+      alert('Top 3 is already full — untap one of the other three first.');
+      return;
+    }
+    updatedStats[playerId] = { ...updatedStats[playerId], top3: 1 };
     setStats(updatedStats);
     setShowActionModal(false);
   };
@@ -1626,6 +1658,15 @@ export default function App() {
                 <button onClick={() => recordEvent('MOTM')} className="btn-action btn-motm">
                   <span className="btn-action-icon">⭐</span>
                   <span className="btn-action-label">Star Player</span>
+                </button>
+                <button
+                  onClick={() => toggleTop3(selectedPlayer.id)}
+                  className={`btn-action btn-top3 ${stats[selectedPlayer.id]?.top3 ? 'active' : ''}`}
+                >
+                  <span className="btn-action-icon">🏅</span>
+                  <span className="btn-action-label">
+                    {stats[selectedPlayer.id]?.top3 ? 'In Top 3 ✓' : 'Top 3'}
+                  </span>
                 </button>
               </div>
 

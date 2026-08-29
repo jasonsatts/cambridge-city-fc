@@ -86,12 +86,13 @@ async function writeToGoogleSheets(matchData) {
       return [
         matchCode, date, opponent, player.squadNum, player.firstName, player.surname,
         s.minutesPlayed || 0, s.goals || 0, s.assists || 0, s.yellow || 0, s.red || 0, s.motm || 0,
+        s.top3 || 0,
       ];
     });
     if (statsRows.length > 0) {
       await sheets.spreadsheets.values.append({
         spreadsheetId: SHEET_ID,
-        range: 'Match Player Stats!A:L',
+        range: 'Match Player Stats!A:M',
         valueInputOption: 'RAW',
         requestBody: { values: statsRows },
       });
