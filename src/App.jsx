@@ -1470,7 +1470,19 @@ export default function App() {
   if (screen === 'match' && matchStarted && (mode === 'coach' || mode === 'parent')) {
     const displayTime = getPeriodElapsedSeconds();
     const isFinalPeriod = half >= numPeriods;
-    
+
+    // Data for the new BBC/live-sport-style score banner (Jason: "a big score
+    // at the top... goal scorers, and assists, any yellow cards"). Reuses
+    // the same `events` list the old bottom scoreboard already read from —
+    // just grouped and formatted for the new layout instead of a single
+    // "Us X – Y Them" line.
+    const ourGoals = events.filter(e => e.event === 'Goal');
+    const ourAssists = events.filter(e => e.event === 'Assist');
+    const ourYellows = events.filter(e => e.event === 'Yellow');
+    const ourReds = events.filter(e => e.event === 'Red');
+    const oppGoals = events.filter(e => e.event === 'Opposition Goal');
+    const shortName = (fullName) => (fullName || '').split(' ')[0];
+
     return (
       <div 
         className="match-container"
@@ -1480,11 +1492,85 @@ export default function App() {
         onTouchMove={handleMouseMove}
         onTouchEnd={handleMouseUp}
       >
-        <div className="match-header">
-          <div className="timer-display">
-            <div className="time">{formatPeriodClock(displayTime)}</div>
-            <div className="half">{getPeriodLabel()}</div>
+        {/* Big score banner — BBC Sport/live-scores style, per Jason's
+            reference screenshots. Sits above the fold; the pitch/formation
+            view is reached by scrolling down, same as before. */}
+        <div className="score-banner">
+          <div className="score-banner-meta">
+            <span className="live-dot" /> LIVE
+            {gameDetails.location && <span className="score-banner-venue"> · {gameDetails.location}</span>}
           </div>
+          <div className="score-banner-teams">
+            <span className="score-banner-team score-banner-team-us">Cambridge City</span>
+            <span className="score-banner-score">
+              {ourGoals.length}<span className="score-banner-score-sep">–</span>{opponentScore}
+            </span>
+            <span className="score-banner-team score-banner-team-them">{gameDetails.opponent || 'Opposition'}</span>
+          </div>
+          <div className="score-banner-clock">
+            <span className="score-banner-time">{formatPeriodClock(displayTime)}</span>
+            <span className="score-banner-period">{getPeriodLabel()}</span>
+          </div>
+          {(ourGoals.length > 0 || oppGoals.length > 0 || ourAssists.length > 0 || ourYellows.length > 0 || ourReds.length > 0) && (
+            <div className="score-banner-events">
+              {(ourGoals.length > 0 || oppGoals.length > 0) && (
+                <div className="score-banner-event-row">
+                  <div className="score-banner-event-col">
+                    {ourGoals.map((e, i) => (
+                      <div key={i} className="score-banner-event-line">
+                        {shortName(e.player)} <span className="score-banner-event-time">{e.timestamp}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="score-banner-event-label">Goals</div>
+                  <div className="score-banner-event-col score-banner-event-col-them">
+                    {oppGoals.map((e, i) => (
+                      <div key={i} className="score-banner-event-line">
+                        <span className="score-banner-event-time">{e.timestamp}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {ourAssists.length > 0 && (
+                <div className="score-banner-event-row">
+                  <div className="score-banner-event-col">
+                    {ourAssists.map((e, i) => (
+                      <div key={i} className="score-banner-event-line">
+                        {shortName(e.player)} <span className="score-banner-event-time">{e.timestamp}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="score-banner-event-label">Assists</div>
+                  <div className="score-banner-event-col score-banner-event-col-them" />
+                </div>
+              )}
+              {(ourYellows.length > 0 || ourReds.length > 0) && (
+                <div className="score-banner-event-row">
+                  <div className="score-banner-event-col">
+                    {ourYellows.map((e, i) => (
+                      <div key={`y${i}`} className="score-banner-event-line">
+                        🟨 {shortName(e.player)} <span className="score-banner-event-time">{e.timestamp}</span>
+                      </div>
+                    ))}
+                    {ourReds.map((e, i) => (
+                      <div key={`r${i}`} className="score-banner-event-line">
+                        🟥 {shortName(e.player)} <span className="score-banner-event-time">{e.timestamp}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="score-banner-event-label">Cards</div>
+                  <div className="score-banner-event-col score-banner-event-col-them" />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="match-header">
+          {/* Time + period used to be shown here too — now redundant, the
+              score banner above already carries the clock. Kept this bar
+              for the play/pause/end-half/full-time controls only. */}
           <div className="match-controls-header">
             {/* Was coach-only. In practice the coach hands off after kickoff and
                 never touches their device again until full-time — the parent
