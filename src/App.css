@@ -458,6 +458,40 @@ html, body, #root {
   box-shadow: 0 0 0 3px rgba(0, 217, 255, 0.1);
 }
 
+/* ===== POSITION-FIRST LINEUP SLOTS ===== */
+.position-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 25px;
+}
+
+.position-slot {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border-left: 3px solid var(--primary);
+}
+
+.position-slot .slot-label {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.position-slot .player-dropdown {
+  width: 100%;
+}
+
+.position-slot.slot-gk { border-left-color: #f1c40f; }
+.position-slot.slot-def { border-left-color: #3498db; }
+.position-slot.slot-mid { border-left-color: #2ecc71; }
+.position-slot.slot-fwd { border-left-color: #ff6b6b; }
+
 /* ===== FORMATION GRID ===== */
 .formation-grid {
   display: grid;

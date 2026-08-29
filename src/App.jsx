@@ -210,17 +210,22 @@ export default function App() {
     setGameDetails(prev => ({ ...prev, [field]: value }));
   };
 
+  // Reordered: formation is now picked FIRST, then this validates the
+  // position-by-position lineup (see the new 'lineup' screen) before moving
+  // to the team sheet. Was the other way round — pick 11 names in whatever
+  // order, then formation — which is exactly why position assignment used
+  // to be "whoever got tapped first is GK", regardless of who the coach
+  // actually meant.
   const handleSelectStartingXI = () => {
-    if (startingXI.length === 11 && subs.length > 0) {
-      setScreen('formation');
+    if (startingXI.length === 11 && startingXI.every(Boolean) && subs.length > 0) {
+      setScreen('team-sheet-preview');
     }
   };
 
   const handleFormationSelect = () => {
     if (formation) {
-      // Go to team sheet preview instead of straight to match
       setTeamSheetId(generateTeamSheetId());
-      setScreen('team-sheet-preview');
+      setScreen('lineup');
     }
   };
 
@@ -1055,9 +1060,9 @@ export default function App() {
 
           <button 
             className="btn-primary"
-            onClick={() => setScreen('lineup')}
+            onClick={() => setScreen('formation')}
           >
-            Continue → Select Team
+            Continue → Select Formation
           </button>
         </div>
       </div>
@@ -1066,79 +1071,119 @@ export default function App() {
 
   // ========== LINEUP SELECTION (COACH ONLY) ==========
   if (screen === 'lineup' && mode === 'coach') {
-    const availablePlayers = allPlayers.filter(
-      p => !startingXI.includes(p.id) && !subs.includes(p.id)
+    // Redesigned to be position-first: the coach now assigns a specific
+    // name to each labelled slot (Goalkeeper, Defender 1, Defender 2...)
+    // instead of picking 11 names in whatever order and letting the app
+    // guess who's meant to be where. That guess was "1st pick = GK, next N
+    // = DEF, etc." purely by selection order — with zero connection to who
+    // the coach actually meant, which is exactly how the actual goalkeeper
+    // ended up placed in midfield on the live pitch. Building startingXI in
+    // this slot order (GK, then DEF row, then MID row, then FWD row) means
+    // buildPitchPlayers/buildPitchPlayersFrom — which position purely by
+    // array order — now place people correctly, with no other changes
+    // needed on the pitch-rendering side.
+    const formConfig = getFormationConfig();
+    const slots = [
+      { label: 'Goalkeeper', group: 'GK' },
+      ...Array.from({ length: formConfig.def }, (_, i) => ({
+        label: `Defender ${i + 1}`, group: 'DEF',
+      })),
+      ...Array.from({ length: formConfig.mid }, (_, i) => ({
+        label: `Midfielder ${i + 1}`, group: 'MID',
+      })),
+      ...Array.from({ length: formConfig.fwd }, (_, i) => ({
+        label: formConfig.fwd === 1 ? 'Striker' : `Forward ${i + 1}`, group: 'FWD',
+      })),
+    ];
+
+    const assignedIds = startingXI.filter(Boolean);
+    const availableForSlots = allPlayers.filter(
+      p => !assignedIds.includes(p.id) && !subs.includes(p.id)
     );
-    const selectedStartingXI = startingXI.map(id => allPlayers.find(p => p.id === id));
+
+    const setSlot = (index, playerId) => {
+      const next = [...startingXI];
+      while (next.length < slots.length) next.push(null);
+      next[index] = playerId ? parseInt(playerId, 10) : null;
+      setStartingXI(next);
+    };
+
+    const filledCount = startingXI.filter(Boolean).length;
+    const availableForSubs = allPlayers.filter(
+      p => !assignedIds.includes(p.id) && !subs.includes(p.id)
+    );
     const selectedSubs = subs.map(id => allPlayers.find(p => p.id === id));
 
     return (
       <div className="container">
         <div className="setup-screen">
-          <h1>⚽ Select Starting XI & Substitutes</h1>
+          <h1>⚽ Pick Your {formation}</h1>
+          <p className="stats-subtitle">Assign a name to each position — left to right.</p>
 
-          <div className="selection-grid">
-            <div className="selection-section">
-              <h2>Starting XI (11 Players)</h2>
-              <div className="player-list">
-                {selectedStartingXI.map((player, idx) => (
-                  <div key={idx} className="selected-player">
-                    <span>#{idx + 1}</span>
-                    <span>{player?.firstName} {player?.surname}</span>
-                    <button onClick={() => setStartingXI(startingXI.filter((_, i) => i !== idx))}>✕</button>
-                  </div>
-                ))}
-                {startingXI.length < 11 && (
-                  <select className="player-dropdown" onChange={(e) => {
-                    if (e.target.value) {
-                      setStartingXI([...startingXI, parseInt(e.target.value)]);
-                      e.target.value = '';
-                    }
-                  }}>
-                    <option value="">+ Add Player ({startingXI.length}/11)</option>
-                    {availablePlayers.map(p => (
+          <div className="position-slots">
+            {slots.map((slot, i) => {
+              const currentId = startingXI[i];
+              const currentPlayer = currentId ? allPlayers.find(p => p.id === currentId) : null;
+              return (
+                <div key={i} className={`position-slot slot-${slot.group.toLowerCase()}`}>
+                  <span className="slot-label">{slot.label}</span>
+                  <select
+                    className="player-dropdown"
+                    value={currentId || ''}
+                    onChange={(e) => setSlot(i, e.target.value)}
+                  >
+                    <option value="">Select player…</option>
+                    {currentPlayer && (
+                      <option value={currentPlayer.id}>
+                        {currentPlayer.firstName} {currentPlayer.surname} (#{currentPlayer.squadNum})
+                      </option>
+                    )}
+                    {availableForSlots.map(p => (
                       <option key={p.id} value={p.id}>
                         {p.firstName} {p.surname} (#{p.squadNum})
                       </option>
                     ))}
                   </select>
-                )}
-              </div>
-            </div>
+                </div>
+              );
+            })}
+          </div>
 
-            <div className="selection-section">
-              <h2>Substitutes (Min. 1)</h2>
-              <div className="player-list">
-                {selectedSubs.map((player, idx) => (
-                  <div key={idx} className="selected-player">
-                    <span>Sub {idx + 1}</span>
-                    <span>{player?.firstName} {player?.surname}</span>
-                    <button onClick={() => setSubs(subs.filter((_, i) => i !== idx))}>✕</button>
-                  </div>
+          <div className="selection-section">
+            <h2>Substitutes (Min. 1)</h2>
+            <div className="player-list">
+              {selectedSubs.map((player, idx) => (
+                <div key={idx} className="selected-player">
+                  <span>Sub {idx + 1}</span>
+                  <span>{player?.firstName} {player?.surname}</span>
+                  <button onClick={() => setSubs(subs.filter((_, i) => i !== idx))}>✕</button>
+                </div>
+              ))}
+              <select className="player-dropdown" onChange={(e) => {
+                if (e.target.value) {
+                  setSubs([...subs, parseInt(e.target.value, 10)]);
+                  e.target.value = '';
+                }
+              }}>
+                <option value="">+ Add Substitute ({subs.length} added)</option>
+                {availableForSubs.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.firstName} {p.surname} (#{p.squadNum})
+                  </option>
                 ))}
-                <select className="player-dropdown" onChange={(e) => {
-                  if (e.target.value) {
-                    setSubs([...subs, parseInt(e.target.value)]);
-                    e.target.value = '';
-                  }
-                }}>
-                  <option value="">+ Add Substitute ({subs.length} added)</option>
-                  {availablePlayers.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.firstName} {p.surname} (#{p.squadNum})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              </select>
             </div>
           </div>
 
           <button
             className="btn-primary"
             onClick={handleSelectStartingXI}
-            disabled={startingXI.length !== 11 || subs.length === 0}
+            disabled={filledCount !== 11 || subs.length === 0}
           >
-            Continue → Select Formation ({startingXI.length}/11)
+            Continue → Team Sheet ({filledCount}/11)
+          </button>
+          <button className="btn-secondary" onClick={() => setScreen('formation')}>
+            ← Change Formation
           </button>
         </div>
       </div>
@@ -1156,14 +1201,14 @@ export default function App() {
               <button
                 key={form}
                 className={`formation-btn ${formation === form ? 'active' : ''}`}
-                onClick={() => setFormation(form)}
+                onClick={() => { setFormation(form); setStartingXI([]); }}
               >
                 {form}
               </button>
             ))}
           </div>
           <button className="btn-primary" onClick={handleFormationSelect}>
-            Preview Team Sheet →
+            Continue → Pick Players →
           </button>
         </div>
       </div>
