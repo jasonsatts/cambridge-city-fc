@@ -11,6 +11,28 @@ const FORMATIONS = {
   '3-5-2': { def: 3, mid: 5, fwd: 2 },
 };
 
+// Real position labels (GK/LB/CB/RB/LM/CM/RM/FW etc.) for each formation,
+// left-to-right, matching Jason's reference diagrams exactly for 4-4-2 and
+// 4-5-1. The other three formations (4-3-3, 5-4-1, 3-5-2) use the same
+// diagrams' labelling conventions extrapolated to a standard shape for that
+// formation — flag it if any of these don't match how you actually want
+// them named and I'll adjust:
+//   4-3-3: back four + a flat three CM's is one common read of "4-3-3"
+//          (rather than a DM+2CM shape), front three as LW/ST/RW
+//   5-4-1: back five labelled LB-CB-CB-CB-RB (the two outer defenders play
+//          more like wing-backs in practice, but kept LB/RB for consistency
+//          with the other back lines rather than introducing "WB")
+//   3-5-2: back three are all CB (no natural "LB/RB" in a back three), wide
+//          midfielders labelled LM/RM the same way 4-4-2/4-5-1's wide
+//          midfielders are, even though they play more like wing-backs
+const POSITION_LABELS = {
+  '4-4-2': ['GK', 'LB', 'CB', 'CB', 'RB', 'LM', 'CM', 'CM', 'RM', 'FW', 'FW'],
+  '4-5-1': ['GK', 'LB', 'CB', 'CB', 'RB', 'LM', 'CM', 'CM', 'CM', 'RM', 'FW'],
+  '4-3-3': ['GK', 'LB', 'CB', 'CB', 'RB', 'CM', 'CM', 'CM', 'LW', 'ST', 'RW'],
+  '5-4-1': ['GK', 'LB', 'CB', 'CB', 'CB', 'RB', 'LM', 'CM', 'CM', 'RM', 'FW'],
+  '3-5-2': ['GK', 'CB', 'CB', 'CB', 'LM', 'CM', 'CM', 'CM', 'RM', 'FW', 'FW'],
+};
+
 // Shareable team sheet ID generator
 const generateTeamSheetId = () => 'TS-' + Math.random().toString(36).substring(2, 10).toUpperCase();
 
@@ -439,6 +461,17 @@ export default function App() {
     const extra = elapsedSeconds - periodLenSec;
     const extraMins = Math.floor(extra / 60);
     const extraSecs = extra % 60;
+    // Stoppage time realistically never runs more than a couple of minutes.
+    // Found live: if the clock is left running by mistake (phone forgotten
+    // in a pocket after Play is pressed, say), the wall-clock-anchored
+    // timer honestly reports however much real time has passed — which can
+    // produce an alarming, obviously-wrong-looking number like "20+161:50"
+    // instead of gently signalling "this needs attention". Cap the display
+    // and flag it instead.
+    const STOPPAGE_CAP_MINS = 15;
+    if (extraMins > STOPPAGE_CAP_MINS) {
+      return `${periodLengthMinutes}+${STOPPAGE_CAP_MINS}:00 ⚠️`;
+    }
     return `${periodLengthMinutes}+${extraMins}:${extraSecs.toString().padStart(2, '0')}`;
   };
 
@@ -1115,18 +1148,23 @@ export default function App() {
     // array order — now place people correctly, with no other changes
     // needed on the pitch-rendering side.
     const formConfig = getFormationConfig();
-    const slots = [
-      { label: 'Goalkeeper', group: 'GK' },
-      ...Array.from({ length: formConfig.def }, (_, i) => ({
-        label: `Defender ${i + 1}`, group: 'DEF',
-      })),
-      ...Array.from({ length: formConfig.mid }, (_, i) => ({
-        label: `Midfielder ${i + 1}`, group: 'MID',
-      })),
-      ...Array.from({ length: formConfig.fwd }, (_, i) => ({
-        label: formConfig.fwd === 1 ? 'Striker' : `Forward ${i + 1}`, group: 'FWD',
-      })),
+    // Real position abbreviations (GK/LB/CB/RB/LM/CM/RM/FW etc.) instead of
+    // generic "Defender 1"/"Midfielder 1" — per Jason's reference diagrams,
+    // so when the coach puts Harriet in LB, the slot itself says LB, not
+    // just an ordinal number.
+    const labelGroup = (label) => {
+      if (label === 'GK') return 'GK';
+      if (['LB', 'CB', 'RB'].includes(label)) return 'DEF';
+      if (['LM', 'CM', 'RM'].includes(label)) return 'MID';
+      return 'FWD'; // FW, ST, LW, RW
+    };
+    const positionLabels = POSITION_LABELS[formation] || [
+      'GK',
+      ...Array.from({ length: formConfig.def }, () => 'CB'),
+      ...Array.from({ length: formConfig.mid }, () => 'CM'),
+      ...Array.from({ length: formConfig.fwd }, () => 'FW'),
     ];
+    const slots = positionLabels.map(label => ({ label, group: labelGroup(label) }));
 
     const assignedIds = startingXI.filter(Boolean);
     const availableForSlots = allPlayers.filter(
