@@ -453,12 +453,21 @@ export default function App() {
     return matchTime - periodStartTime;
   };
 
-  // For the big on-screen clock: "39:58" during normal time, "40+2:15" once
-  // a period runs long (injuries, restarts, etc.).
-  const formatPeriodClock = (elapsedSeconds) => {
-    const periodLenSec = periodLengthMinutes * 60;
-    if (elapsedSeconds <= periodLenSec) return formatTime(elapsedSeconds);
-    const extra = elapsedSeconds - periodLenSec;
+  // For the big on-screen clock: a continuous match clock like a real
+  // broadcast scoreboard — "39:58" cumulative since kickoff, not reset back
+  // to 0:00 at the start of each half/quarter. Jason: "quarter 2 starts on
+  // 20 mins... times for goals, assists etc will reflect where in the game
+  // the event happened." matchTime itself was ALREADY continuous under the
+  // hood — periodStartTime was only ever used to detect stoppage time for
+  // whichever period is current, never to reset the clock — so this turned
+  // out to be a pure formatting change: takes the cumulative matchTime
+  // directly now, and works out the current period's scheduled cumulative
+  // end (half * periodLengthMinutes) to decide when to show "+" stoppage.
+  const formatPeriodClock = (cumulativeSeconds) => {
+    const periodEndMinutes = half * periodLengthMinutes;
+    const periodEndSec = periodEndMinutes * 60;
+    if (cumulativeSeconds <= periodEndSec) return formatTime(cumulativeSeconds);
+    const extra = cumulativeSeconds - periodEndSec;
     const extraMins = Math.floor(extra / 60);
     const extraSecs = extra % 60;
     // Stoppage time realistically never runs more than a couple of minutes.
@@ -470,24 +479,26 @@ export default function App() {
     // and flag it instead.
     const STOPPAGE_CAP_MINS = 15;
     if (extraMins > STOPPAGE_CAP_MINS) {
-      return `${periodLengthMinutes}+${STOPPAGE_CAP_MINS}:00 ⚠️`;
+      return `${periodEndMinutes}+${STOPPAGE_CAP_MINS}:00 ⚠️`;
     }
-    return `${periodLengthMinutes}+${extraMins}:${extraSecs.toString().padStart(2, '0')}`;
+    return `${periodEndMinutes}+${extraMins}:${extraSecs.toString().padStart(2, '0')}`;
   };
 
-  // For event timestamps logged against a player/opponent goal, e.g. "22'04"
-  // normally, "40+3'12" in stoppage — same idea, apostrophe style to match
-  // how the rest of the app already writes match minutes.
+  // For event timestamps logged against a player/opponent goal, e.g. "42'04"
+  // in the third quarter of a JPL match (cumulative, not "2'04" relative to
+  // that quarter) — same cumulative-clock reasoning as formatPeriodClock,
+  // apostrophe style to match how the rest of the app already writes match
+  // minutes.
   const getEventTimestamp = () => {
-    const elapsed = getPeriodElapsedSeconds();
-    const periodLenSec = periodLengthMinutes * 60;
-    const secs = elapsed % 60;
-    if (elapsed <= periodLenSec) {
-      const mins = Math.floor(elapsed / 60);
+    const periodEndMinutes = half * periodLengthMinutes;
+    const periodEndSec = periodEndMinutes * 60;
+    const secs = matchTime % 60;
+    if (matchTime <= periodEndSec) {
+      const mins = Math.floor(matchTime / 60);
       return `${mins}'${secs.toString().padStart(2, '0')}`;
     }
-    const extraMins = Math.floor((elapsed - periodLenSec) / 60);
-    return `${periodLengthMinutes}+${extraMins}'${secs.toString().padStart(2, '0')}`;
+    const extraMins = Math.floor((matchTime - periodEndSec) / 60);
+    return `${periodEndMinutes}+${extraMins}'${secs.toString().padStart(2, '0')}`;
   };
 
   // "Half 1" reads naturally for a standard 2-period match; a 4-period
@@ -1506,7 +1517,11 @@ export default function App() {
 
   // ========== MATCH SCREEN (COACH ONLY) ==========
   if (screen === 'match' && matchStarted && (mode === 'coach' || mode === 'parent')) {
-    const displayTime = getPeriodElapsedSeconds();
+    // Cumulative match clock, not period-relative — see formatPeriodClock's
+    // comment for why. matchTime itself was already continuous; the old
+    // getPeriodElapsedSeconds() subtraction was what made every period
+    // visually restart from 0:00.
+    const displayTime = matchTime;
     const isFinalPeriod = half >= numPeriods;
 
     // Data for the new BBC/live-sport-style score banner (Jason: "a big score
@@ -1831,7 +1846,8 @@ export default function App() {
 
   // ========== PARENT WATCH (READ-ONLY) ==========
   if (screen === 'parent-watch' && mode === 'parent') {
-    const displayTime = getPeriodElapsedSeconds();
+    // Cumulative match clock — see formatPeriodClock's comment.
+    const displayTime = matchTime;
     
     // LIVE MATCH WATCH
     return (
